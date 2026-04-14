@@ -823,13 +823,24 @@ function ensureCustomKPIRow(){
 function renderCustomKPIs(){
   const row=document.getElementById('custom-kpi-row');if(!row)return;
   const sM=document.getElementById('f-month').value,mn=m2n(sM),base=getBase();
-  row.innerHTML=customKPIs.map(cfg=>{
+  while(row.firstChild)row.removeChild(row.firstChild);
+  customKPIs.forEach(function(cfg){
     const recs=applyKPIFilter(base,cfg.filter);
     const val=cfg.metric==='overdue_gt30'
       ?(sM?base.filter(d=>d.fs==="Pending"&&m2n(d.lmy)<=mn):base.filter(d=>d.fs==="Pending")).filter(d=>d.aging>30).length
       :computeMetric(recs,cfg.metric,sM);
-    return '<div class="custom-kpi-card" style="--ckc:'+cfg.color+'"><button class="rm-btn" onclick="removeKPI(\'+cfg.id+'\')">&#10005;</button><div class="kpi-val">'+(typeof val==='number'&&val%1!==0?val.toFixed(1):val.toLocaleString())+'</div><div class="kpi-lbl">'+cfg.label+'</div></div>';
-  }).join('');
+    const div=document.createElement('div');
+    div.id=cfg.id;div.className='custom-kpi-card';
+    div.setAttribute('style','--ckc:'+cfg.color);
+    const btn=document.createElement('button');
+    btn.className='rm-btn';btn.textContent='\u2715';
+    btn.addEventListener('click',function(){removeKPI(cfg.id);});
+    const valDiv=document.createElement('div');valDiv.className='kpi-val';
+    valDiv.textContent=typeof val==='number'&&val%1!==0?val.toFixed(1):val.toLocaleString();
+    const lblDiv=document.createElement('div');lblDiv.className='kpi-lbl';lblDiv.textContent=cfg.label;
+    div.appendChild(btn);div.appendChild(valDiv);div.appendChild(lblDiv);
+    row.appendChild(div);
+  });
 }
 function removeKPI(id){customKPIs=customKPIs.filter(k=>k.id!==id);renderCustomKPIs();}
 
@@ -868,9 +879,26 @@ function ensureCustomChartsWrap(){
 }
 function addCustomChartCard(cfg){
   const wrap=document.getElementById('custom-charts-wrap');
-  const card=document.createElement('div');card.className='custom-chart-card';card.id=cfg.id;
-  const displayTitle=cfg.title||(cfg.type==='trend'?'Monthly Trend':getDimLabel(cfg.groupby)+' — '+getMetricLabel(cfg.metric));
-  card.innerHTML='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px"><div><div class="chart-title">'+displayTitle+'</div><div class="chart-sub">'+getMetricLabel(cfg.metric)+' by '+(cfg.type==='trend'?'Month':getDimLabel(cfg.groupby))+'</div></div><button class="rm-btn" onclick="removeChart(\'+cfg.id+'\')" style="position:relative;top:auto;right:auto">✕ Remove</button></div>'+(cfg.type==='table'?'<div id="tbl-'+cfg.canvasId+'"></div>':'<canvas id="'+cfg.canvasId+'" height="160"></canvas>');
+  const card=document.createElement('div');
+  card.className='custom-chart-card';card.id=cfg.id;
+  const displayTitle=cfg.title||(cfg.type==='trend'?'Monthly Trend':getDimLabel(cfg.groupby)+' \u2014 '+getMetricLabel(cfg.metric));
+  const hdr=document.createElement('div');
+  hdr.setAttribute('style','display:flex;align-items:center;justify-content:space-between;margin-bottom:8px');
+  const tWrap=document.createElement('div');
+  const t=document.createElement('div');t.className='chart-title';t.textContent=displayTitle;
+  const s=document.createElement('div');s.className='chart-sub';
+  s.textContent=getMetricLabel(cfg.metric)+' by '+(cfg.type==='trend'?'Month':getDimLabel(cfg.groupby));
+  tWrap.appendChild(t);tWrap.appendChild(s);
+  const rmBtn=document.createElement('button');
+  rmBtn.className='rm-btn';rmBtn.textContent='\u2715 Remove';
+  rmBtn.setAttribute('style','position:relative;top:auto;right:auto');
+  rmBtn.addEventListener('click',function(){removeChart(cfg.id);});
+  hdr.appendChild(tWrap);hdr.appendChild(rmBtn);card.appendChild(hdr);
+  if(cfg.type==='table'){
+    const d=document.createElement('div');d.id='tbl-'+cfg.canvasId;card.appendChild(d);
+  }else{
+    const cv=document.createElement('canvas');cv.id=cfg.canvasId;cv.height=160;card.appendChild(cv);
+  }
   wrap.appendChild(card);
   renderOneCustomChart(cfg);
 }
