@@ -528,7 +528,7 @@ function transformRow(row){
 }
 
 // LOAD — with localStorage cache (4-hour TTL) for instant repeat visits
-const LS_KEY='vmm_data_v3'; // bump version to bust old cache
+const LS_KEY='vmm_data_v4'; // bump version to bust old cache
 const LS_TTL=4*60*60*1000; // 4 hours in ms
 
 function applyData(jsonData){
@@ -543,8 +543,15 @@ function applyData(jsonData){
   renderStoreWidget(document.getElementById('f-month').value);
 }
 
-function lsGet(key){try{return localStorage.getItem(key);}catch(e){return null;}}
-function lsSet(key,val){try{localStorage.setItem(key,val);}catch(e){/* blocked by tracking prevention — ignore */}}
+// Use sessionStorage (not blocked by Edge tracking prevention) with localStorage fallback
+function lsGet(key){
+  try{const v=sessionStorage.getItem(key);if(v)return v;}catch(e){}
+  try{return localStorage.getItem(key);}catch(e){return null;}
+}
+function lsSet(key,val){
+  try{sessionStorage.setItem(key,val);return;}catch(e){}
+  try{localStorage.setItem(key,val);}catch(e){}
+}
 
 async function fetchFresh(){
   const res=await fetch(SCRIPT_URL);
