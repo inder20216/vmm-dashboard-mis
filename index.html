@@ -476,7 +476,7 @@ Chart.register(ChartDataLabels);
 // =====================================================
 // CONFIG — paste your Apps Script deployment URL here
 // =====================================================
-const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyB2hfQQ-NzOfzjHD2L5E8JFbsoBmV50mC5QaGpSyHlk7ss8_QK-sATlyI7llhKn3ixpQ/exec';
+const SCRIPT_URL = 'https://automation.openmindhelpline.com/webhook/vmm-googlesheet';
 
 const CRITICAL_PRODUCTS = new Set([
   'genset','electrical','electrical panel','ac',
@@ -528,7 +528,7 @@ function transformRow(row){
 }
 
 // LOAD — with localStorage cache (4-hour TTL) for instant repeat visits
-const LS_KEY='vmm_data_v4'; // bump version to bust old cache
+const LS_KEY='vmm_data_v5'; // bump version to bust old cache
 const LS_TTL=4*60*60*1000; // 4 hours in ms
 
 function applyData(jsonData){
@@ -556,8 +556,10 @@ function lsSet(key,val){
 async function fetchFresh(){
   const res=await fetch(SCRIPT_URL);
   if(!res.ok)throw new Error('HTTP '+res.status);
-  const json=await res.json();
-  if(json.error)throw new Error(json.error);
+  const raw=await res.json();
+  // n8n returns array directly; Apps Script returns {data:[], total:N}
+  const rows=Array.isArray(raw)?raw:(raw.data||[]);
+  const json={data:rows,total:rows.length};
   lsSet(LS_KEY,JSON.stringify({ts:Date.now(),payload:json}));
   return json;
 }
