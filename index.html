@@ -502,8 +502,8 @@ function parseDate(v){
 
 // TRANSFORM
 function transformRow(row){
-  const ld=parseDate(row['Complaint Date']);if(!ld)return null;
-  const cd=parseDate(row['Date of Closure']);
+  const ld=parseDate(row['Log date']);if(!ld)return null;
+  const cd=parseDate(row['Closer Date']);
   const pn=String(row['Product Name']||'').trim();
   const otat=parseFloat(row['Over Due TAT'])||0;
   return{ld,lmy:fmtMY(ld),cd,cmy:cd?fmtMY(cd):null,
