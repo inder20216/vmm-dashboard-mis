@@ -828,7 +828,7 @@ function renderCustomKPIs(){
     const val=cfg.metric==='overdue_gt30'
       ?(sM?base.filter(d=>d.fs==="Pending"&&m2n(d.lmy)<=mn):base.filter(d=>d.fs==="Pending")).filter(d=>d.aging>30).length
       :computeMetric(recs,cfg.metric,sM);
-    return '<div class="custom-kpi-card" style="--ckc:'+cfg.color+'"><button class="rm-btn" onclick="removeKPI(''+cfg.id+'')">&#10005;</button><div class="kpi-val">'+(typeof val==='number'&&val%1!==0?val.toFixed(1):val.toLocaleString())+'</div><div class="kpi-lbl">'+cfg.label+'</div></div>';
+    return '<div class="custom-kpi-card" style="--ckc:'+cfg.color+'"><button class="rm-btn" onclick="removeKPI(\'+cfg.id+'\')">&#10005;</button><div class="kpi-val">'+(typeof val==='number'&&val%1!==0?val.toFixed(1):val.toLocaleString())+'</div><div class="kpi-lbl">'+cfg.label+'</div></div>';
   }).join('');
 }
 function removeKPI(id){customKPIs=customKPIs.filter(k=>k.id!==id);renderCustomKPIs();}
@@ -870,7 +870,7 @@ function addCustomChartCard(cfg){
   const wrap=document.getElementById('custom-charts-wrap');
   const card=document.createElement('div');card.className='custom-chart-card';card.id=cfg.id;
   const displayTitle=cfg.title||(cfg.type==='trend'?'Monthly Trend':getDimLabel(cfg.groupby)+' — '+getMetricLabel(cfg.metric));
-  card.innerHTML='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px"><div><div class="chart-title">'+displayTitle+'</div><div class="chart-sub">'+getMetricLabel(cfg.metric)+' by '+(cfg.type==='trend'?'Month':getDimLabel(cfg.groupby))+'</div></div><button class="rm-btn" onclick="removeChart(''+cfg.id+'')" style="position:relative;top:auto;right:auto">✕ Remove</button></div>'+(cfg.type==='table'?'<div id="tbl-'+cfg.canvasId+'"></div>':'<canvas id="'+cfg.canvasId+'" height="160"></canvas>');
+  card.innerHTML='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px"><div><div class="chart-title">'+displayTitle+'</div><div class="chart-sub">'+getMetricLabel(cfg.metric)+' by '+(cfg.type==='trend'?'Month':getDimLabel(cfg.groupby))+'</div></div><button class="rm-btn" onclick="removeChart(\'+cfg.id+'\')" style="position:relative;top:auto;right:auto">✕ Remove</button></div>'+(cfg.type==='table'?'<div id="tbl-'+cfg.canvasId+'"></div>':'<canvas id="'+cfg.canvasId+'" height="160"></canvas>');
   wrap.appendChild(card);
   renderOneCustomChart(cfg);
 }
