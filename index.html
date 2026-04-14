@@ -497,17 +497,19 @@ function parseDate(v){
   if(!v&&v!==0)return null;
   const s=String(v).trim();if(!s||s==='0')return null;
   let d=null,m;
-  // Google Sheets serial date number (days since Dec 30, 1899)
-  const num=Number(v);
-  if(!isNaN(num)&&num>40000&&num<60000){
-    d=new Date(new Date(1899,11,30).getTime()+num*86400000);
-  }
-  // DD-MM-YYYY or DD/MM/YYYY
-  if(!d){m=s.match(/^(\d{1,2})[-\/](\d{1,2})[-\/](\d{4})/);if(m)d=new Date(+m[3],+m[2]-1,+m[1]);}
+  // M/D/YYYY — n8n returns Google Sheets dates in US format with slashes
+  m=s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if(m)d=new Date(+m[3],+m[1]-1,+m[2]); // month/day/year
+  // DD-MM-YYYY — Apps Script format with dashes
+  if(!d){m=s.match(/^(\d{1,2})-(\d{1,2})-(\d{4})$/);if(m)d=new Date(+m[3],+m[2]-1,+m[1]);}
   // YYYY-MM-DD
   if(!d){m=s.match(/^(\d{4})-(\d{2})-(\d{2})/);if(m)d=new Date(+m[1],+m[2]-1,+m[3]);}
-  // fallback
-  if(!d){d=new Date(s);}
+  // Google Sheets serial number fallback
+  const num=Number(v);
+  if(!d&&!isNaN(num)&&num>40000&&num<60000){
+    const utc=new Date(Math.round((num-25569)*86400000));
+    d=new Date(utc.getUTCFullYear(),utc.getUTCMonth(),utc.getUTCDate());
+  }
   if(!d||isNaN(d.getTime()))return null;
   const yr=d.getFullYear();
   return(yr>=2020&&yr<=2030)?d:null;
@@ -532,7 +534,7 @@ function transformRow(row){
 }
 
 // LOAD — with localStorage cache (4-hour TTL) for instant repeat visits
-const LS_KEY='vmm_data_v6'; // bump version to bust old cache
+const LS_KEY='vmm_data_v7'; // bump version to bust old cache
 const LS_TTL=4*60*60*1000; // 4 hours in ms
 
 function applyData(jsonData){
