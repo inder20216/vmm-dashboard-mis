@@ -363,7 +363,7 @@ body{font-family:"Outfit",sans-serif;background:var(--bg);color:var(--text);min-
   <div class="load-box">
     <div class="spinner"></div>
     <div style="font-size:13px;font-weight:700;color:#0d2b4e">Loading Dashboard…</div>
-    <p>Fetching live data from Google Sheets</p>
+    <p id="load-msg">Fetching latest data…</p>
   </div>
 </div>
 
@@ -494,10 +494,19 @@ let selectedKPIColor = '#1a6cc4';
 function m2n(m){if(!m)return -1;const p=m.split("'");return p.length<2?-1:(2000+parseInt(p[1]))*12+(MMAP[p[0]]||0);}
 function fmtMY(d){if(!d||isNaN(d.getTime()))return'';return MON[d.getMonth()]+"'"+String(d.getFullYear()).slice(2);}
 function parseDate(v){
-  if(!v)return null;const s=String(v).trim();if(!s)return null;
-  const m=s.match(/(\d{2})-(\d{2})-(\d{4})/);
-  if(m)return new Date(+m[3],+m[2]-1,+m[1]);
-  const d=new Date(s);return isNaN(d.getTime())?null:d;
+  if(!v&&v!==0)return null;
+  const s=String(v).trim();if(!s||s==='0')return null;
+  let d=null,m;
+  // DD-MM-YYYY or DD/MM/YYYY
+  m=s.match(/^(\d{1,2})[-\/](\d{1,2})[-\/](\d{4})/);
+  if(m)d=new Date(+m[3],+m[2]-1,+m[1]);
+  // YYYY-MM-DD
+  if(!d){m=s.match(/^(\d{4})-(\d{2})-(\d{2})/);if(m)d=new Date(+m[1],+m[2]-1,+m[3]);}
+  // fallback
+  if(!d){d=new Date(s);}
+  if(!d||isNaN(d.getTime()))return null;
+  const yr=d.getFullYear();
+  return(yr>=2020&&yr<=2030)?d:null;
 }
 
 // TRANSFORM
@@ -518,23 +527,52 @@ function transformRow(row){
     fm:String(row['Updated FM Name']||row['FM Name']||'').trim(),otat,_raw:row};
 }
 
-// LOAD
+// LOAD — with localStorage cache (4-hour TTL) for instant repeat visits
+const LS_KEY='vmm_data_v3'; // bump version to bust old cache
+const LS_TTL=4*60*60*1000; // 4 hours in ms
+
+function applyData(jsonData){
+  RAW=(jsonData.data||[]).map(transformRow).filter(Boolean);
+  document.getElementById('rec-count').textContent=RAW.length.toLocaleString();
+  const dates=RAW.filter(d=>d.ld).map(d=>d.ld.getTime());
+  if(dates.length){
+    const el=document.querySelector('.rec-upd strong');
+    if(el)el.textContent=new Date(Math.max(...dates)).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});
+  }
+  initFilters();render();
+  renderStoreWidget(document.getElementById('f-month').value);
+}
+
+async function fetchFresh(){
+  const res=await fetch(SCRIPT_URL);
+  if(!res.ok)throw new Error('HTTP '+res.status);
+  const json=await res.json();
+  if(json.error)throw new Error(json.error);
+  localStorage.setItem(LS_KEY,JSON.stringify({ts:Date.now(),payload:json}));
+  return json;
+}
+
 async function loadData(){
   showLoading(true);
   try{
-    const res=await fetch(SCRIPT_URL);
-    if(!res.ok)throw new Error('HTTP '+res.status);
-    const json=await res.json();
-    if(json.error)throw new Error(json.error);
-    RAW=json.data.map(transformRow).filter(Boolean);
-    document.getElementById('rec-count').textContent=RAW.length.toLocaleString();
-    const dates=RAW.filter(d=>d.ld).map(d=>d.ld.getTime());
-    if(dates.length){
-      const el=document.querySelector('.rec-upd strong');
-      if(el)el.textContent=new Date(Math.max(...dates)).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});
+    // Try localStorage first
+    const cached=localStorage.getItem(LS_KEY);
+    if(cached){
+      const {ts,payload}=JSON.parse(cached);
+      const age=Date.now()-ts;
+      if(age<LS_TTL&&(payload.data||[]).length>0){
+        applyData(payload);
+        showLoading(false);
+        // Silently refresh in background if older than 30 min
+        if(age>30*60*1000){
+          fetchFresh().then(j=>{ /* just update cache */ }).catch(()=>{});
+        }
+        return;
+      }
     }
-    initFilters();render();
-    renderStoreWidget(document.getElementById('f-month').value);
+    // No valid cache — fetch fresh
+    const json=await fetchFresh();
+    applyData(json);
   }catch(e){showError(e.message);}
   showLoading(false);
 }
