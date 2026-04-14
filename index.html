@@ -511,7 +511,7 @@ function parseDate(v){
 
 // TRANSFORM
 function transformRow(row){
-  const ld=parseDate(row['Log date']);if(!ld)return null;
+  const ld=parseDate(row['Log Date']);if(!ld)return null;
   const cd=parseDate(row['Closer Date']);
   const pn=String(row['Product Name']||'').trim();
   const otat=parseFloat(row['Over Due TAT'])||0;
@@ -524,7 +524,7 @@ function transformRow(row){
     tat:otat===0?'Within TAT':'Beyond TAT',
     dr:String(row['Last Delay reason']||'').trim(),
     aging:parseFloat(row['Aging'])||0,pn,
-    fm:String(row['Updated FM Name']||row['FM Name']||'').trim(),otat,_raw:row};
+    fm:String(row['FM Name-U']||row['FM Name']||'').trim(),otat,_raw:row};
 }
 
 // LOAD — with localStorage cache (4-hour TTL) for instant repeat visits
