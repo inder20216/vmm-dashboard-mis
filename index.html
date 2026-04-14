@@ -1,0 +1,922 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Monthly Dashboard - VMM</title>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#d6e8f8;
+  --card:#ffffff;
+  --border:rgba(30,90,160,0.14);
+  --sky:#1a6cc4;--teal:#0891b2;--green:#16a34a;--amber:#d97706;--rose:#e11d48;
+  --purple:#7c3aed;--orange:#ea580c;
+  --text:#0d2b4e;--muted:#4a7aaa;
+  --radius:11px;--shadow:0 2px 12px rgba(30,90,160,0.1);
+}
+body{font-family:"Outfit",sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+
+.wrap{max-width:1700px;margin:0 auto;padding:12px 18px}
+
+/* HEADER */
+.header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;
+  padding:11px 18px;background:var(--card);border:1px solid var(--border);
+  border-radius:var(--radius);box-shadow:var(--shadow)}
+.hll{display:flex;align-items:center;gap:11px}
+.logo{width:36px;height:36px;background:linear-gradient(135deg,#1a6cc4,#0891b2);border-radius:9px;
+  display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0}
+.htitle{font-size:17px;font-weight:800;letter-spacing:-0.4px;color:#0d2b4e;line-height:1.2}
+.htitle span{color:var(--sky)}
+.hsub{font-size:9.5px;color:var(--muted);margin-top:2px;font-style:italic}
+.hrr{display:flex;align-items:center;gap:10px;flex-shrink:0}
+.rec-box{text-align:right}
+.rec-main{font-size:11.5px;font-weight:600;color:#0d2b4e}
+.rec-main span{color:var(--sky);font-weight:800}
+.rec-upd{font-size:9.5px;color:var(--muted);margin-top:1px}
+.help-btn{cursor:pointer;background:rgba(26,108,196,0.08);border:1px solid rgba(26,108,196,0.22);
+  color:var(--sky);border-radius:7px;padding:5px 12px;font-family:"Outfit",sans-serif;
+  font-size:11px;font-weight:700;transition:background .2s;white-space:nowrap}
+.help-btn:hover{background:rgba(26,108,196,0.15)}
+
+/* FILTERS */
+.filters{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;
+  padding:10px 14px;background:var(--card);border:1px solid var(--border);border-radius:var(--radius)}
+.fg{display:flex;flex-direction:column;gap:3px;min-width:120px;flex:1}
+.fg label{font-size:9px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.8px}
+.fg select{background:#edf5fd;color:var(--text);border:1px solid rgba(26,108,196,0.18);
+  border-radius:6px;padding:6px 24px 6px 9px;font-size:11.5px;font-family:"Outfit",sans-serif;
+  cursor:pointer;outline:none;appearance:none;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='9' height='9' viewBox='0 0 12 12'%3E%3Cpath fill='%234a7aaa' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 7px center;transition:border-color .2s}
+.fg select:focus{border-color:var(--sky)}
+.fg select option{background:#edf5fd}
+
+/* KPIs — 5 cards */
+.kpi-row{display:grid;grid-template-columns:repeat(5,1fr);gap:9px;margin-bottom:10px;align-items:start}
+.kpi{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);
+  padding:12px 14px;position:relative;overflow:hidden;transition:transform .15s;cursor:default;height:auto}
+.kpi:hover{transform:translateY(-2px);box-shadow:0 4px 16px rgba(30,90,160,0.14)}
+.kpi::before{content:"";position:absolute;top:0;left:0;right:0;height:3px;background:var(--kc,var(--sky))}
+.kpi-top{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:7px}
+.kpi-icon{width:28px;height:28px;border-radius:6px;display:flex;align-items:center;justify-content:center;
+  font-size:12px;background:rgba(26,108,196,0.08);flex-shrink:0}
+.kpi-badge{font-size:9.5px;font-weight:700;padding:1px 6px;border-radius:8px;display:flex;align-items:center;gap:2px}
+.kpi-badge.up{background:rgba(22,163,74,0.1);color:var(--green)}
+.kpi-badge.dn{background:rgba(225,29,72,0.1);color:var(--rose)}
+.kpi-badge.fl{background:rgba(74,122,170,0.1);color:var(--muted)}
+.kpi-val{font-size:24px;font-weight:800;color:#0d2b4e;line-height:1;margin-bottom:3px;letter-spacing:-0.5px}
+.kpi-lbl{font-size:9.5px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.6px}
+.kpi-sub{font-size:8.5px;color:var(--muted);margin-top:3px;opacity:0.75}
+
+/* CHART GRID — 2 cols per row, each row compact */
+.r2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
+.r2b{display:grid;grid-template-columns:1.2fr 0.8fr;gap:10px;margin-bottom:10px}
+.r1{display:grid;grid-template-columns:1fr;margin-bottom:10px}
+.chart-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:13px 15px;box-shadow:var(--shadow)}
+.chart-title{font-size:11.5px;font-weight:700;color:#0d2b4e;margin-bottom:1px}
+.chart-sub{font-size:9px;color:var(--muted);margin-bottom:8px}
+
+/* DELAY TABLE */
+.delay-list{margin-top:2px}
+.dr{display:flex;align-items:center;gap:6px;padding:4px 0;border-bottom:1px solid rgba(26,108,196,0.07)}
+.dr:last-child{border-bottom:none}
+.dr-rank{font-size:9px;color:var(--muted);min-width:16px;font-weight:700}
+.dr-name{flex:1;font-size:10.5px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dr-bwrap{width:70px;height:4px;background:rgba(26,108,196,0.1);border-radius:2px;overflow:hidden}
+.dr-bar{height:100%;border-radius:2px;background:linear-gradient(90deg,var(--amber),var(--rose))}
+.dr-count{font-size:10.5px;font-weight:700;color:var(--amber);min-width:42px;text-align:right}
+.dr-age{font-size:10px;color:var(--muted);min-width:52px;text-align:right}
+
+::-webkit-scrollbar{width:3px;height:3px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:rgba(26,108,196,0.18);border-radius:2px}
+
+/* MODAL */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(13,43,78,0.4);z-index:999;
+  align-items:center;justify-content:center;padding:20px}
+.modal-overlay.open{display:flex}
+.modal{background:#fff;border:1px solid rgba(26,108,196,0.2);border-radius:14px;
+  padding:22px;max-width:520px;width:100%;box-shadow:0 20px 50px rgba(13,43,78,0.2);max-height:88vh;overflow-y:auto}
+.modal h3{font-size:14px;font-weight:800;color:#0d2b4e;margin-bottom:12px;padding-bottom:9px;
+  border-bottom:1px solid rgba(26,108,196,0.12)}
+.msec{font-size:10.5px;font-weight:700;color:var(--sky);margin:12px 0 7px;text-transform:uppercase;letter-spacing:0.6px}
+.kdef{background:rgba(26,108,196,0.04);border-radius:7px;padding:8px 11px}
+.kdef-row{display:flex;gap:8px;padding:4px 0;font-size:11px;align-items:flex-start;
+  border-bottom:1px solid rgba(26,108,196,0.07)}
+.kdef-row:last-child{border-bottom:none}
+.kdot{width:7px;height:7px;border-radius:2px;flex-shrink:0;margin-top:3px}
+.mrow{display:flex;gap:9px;margin-bottom:8px;align-items:flex-start}
+.mn{width:20px;height:20px;border-radius:50%;background:linear-gradient(135deg,#1a6cc4,#0891b2);
+  color:#fff;font-size:10px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px}
+.mb{font-size:11.5px;color:#1a3a5c;line-height:1.6}
+.mb strong{color:var(--sky)}
+.mclose{margin-top:12px;width:100%;padding:8px;background:rgba(26,108,196,0.08);
+  border:1px solid rgba(26,108,196,0.22);color:var(--sky);border-radius:7px;
+  font-family:"Outfit",sans-serif;font-size:12px;font-weight:700;cursor:pointer;transition:background .2s}
+.mclose:hover{background:rgba(26,108,196,0.15)}
+
+@media(max-width:1100px){.kpi-row{grid-template-columns:repeat(3,1fr)}.r2,.r2b{grid-template-columns:1fr}}
+@media(max-width:700px){.kpi-row{grid-template-columns:1fr 1fr}}
+
+/* FLOATING STORE WIDGET */
+#store-widget{
+  position:fixed;bottom:24px;right:24px;z-index:900;
+  background:#ffffff;border:1px solid rgba(8,145,178,0.25);
+  border-radius:14px;padding:14px 16px 12px;
+  box-shadow:0 8px 32px rgba(13,43,78,0.18);
+  min-width:200px;cursor:default;
+  animation:floatIn .4s cubic-bezier(.22,1,.36,1);
+}
+@keyframes floatIn{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+#store-widget.hidden{display:none}
+.sw-close{position:absolute;top:8px;right:10px;background:none;border:none;
+  font-size:13px;color:#4a7aaa;cursor:pointer;line-height:1;padding:2px 4px;border-radius:4px}
+.sw-close:hover{background:rgba(26,108,196,0.08)}
+.sw-title{font-size:9px;font-weight:700;color:#4a7aaa;text-transform:uppercase;
+  letter-spacing:0.8px;margin-bottom:8px;font-family:"Outfit",sans-serif}
+.sw-main{display:flex;align-items:flex-end;gap:10px;margin-bottom:8px}
+.sw-num{font-size:28px;font-weight:800;color:#0d2b4e;line-height:1;font-family:"Outfit",sans-serif;letter-spacing:-0.5px}
+.sw-badge{font-size:9.5px;font-weight:700;padding:2px 7px;border-radius:8px;margin-bottom:4px}
+.sw-badge.up{background:rgba(22,163,74,0.1);color:#16a34a}
+.sw-badge.dn{background:rgba(225,29,72,0.1);color:#e11d48}
+.sw-badge.fl{background:rgba(74,122,170,0.1);color:#4a7aaa}
+.sw-lbl{font-size:9px;color:#4a7aaa;font-family:"Outfit",sans-serif}
+.sw-spark{display:flex;align-items:flex-end;gap:3px;height:28px;margin-top:2px}
+.sw-spark span{flex:1;border-radius:2px 2px 0 0;background:rgba(8,145,178,0.2);min-width:5px;position:relative}
+.sw-spark span.sw-active{background:#0891b2}
+.sw-spark span:hover::after{content:attr(data-tip);position:absolute;bottom:110%;left:50%;
+  transform:translateX(-50%);background:#0d2b4e;color:#fff;font-size:8px;padding:2px 5px;
+  border-radius:4px;white-space:nowrap;pointer-events:none;font-family:"Outfit",sans-serif}
+.sw-month{font-size:9px;color:#4a7aaa;margin-top:5px;font-family:"Outfit",sans-serif;text-align:center}
+
+
+
+
+/* LOADING OVERLAY */
+#loading-overlay{position:fixed;inset:0;background:rgba(214,232,248,0.92);z-index:9999;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(3px)}
+.spinner{width:40px;height:40px;border:4px solid rgba(26,108,196,0.2);border-top-color:#1a6cc4;border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 14px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.load-box{text-align:center;background:#fff;border-radius:14px;padding:28px 36px;box-shadow:0 8px 32px rgba(13,43,78,0.15)}
+.load-box p{font-size:12px;color:#4a7aaa;font-weight:600;margin-top:4px}
+/* CUSTOM KPI ROW */
+.custom-kpi-row{display:flex;flex-wrap:wrap;gap:9px;margin-bottom:10px}
+.custom-kpi-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px;position:relative;overflow:hidden;min-width:160px;flex:1}
+.custom-kpi-card::before{content:"";position:absolute;top:0;left:0;right:0;height:3px;background:var(--ckc,var(--sky))}
+.rm-btn{position:absolute;top:6px;right:8px;background:none;border:none;font-size:11px;color:#4a7aaa;cursor:pointer;padding:2px 5px;border-radius:4px;line-height:1}
+.rm-btn:hover{background:rgba(225,29,72,0.08);color:#e11d48}
+/* CUSTOM CHARTS */
+.custom-charts-wrap{display:flex;flex-direction:column;gap:10px;margin-bottom:10px}
+.custom-chart-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:13px 15px;box-shadow:var(--shadow);position:relative}
+.custom-table{width:100%;border-collapse:collapse;font-size:11px;margin-top:8px}
+.custom-table th{background:rgba(26,108,196,0.07);color:#0d2b4e;font-weight:700;padding:6px 10px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:0.5px}
+.custom-table td{padding:5px 10px;border-bottom:1px solid rgba(26,108,196,0.07);color:#1a3a5c}
+.custom-table tr:last-child td{border-bottom:none}
+.custom-table tr:hover td{background:rgba(26,108,196,0.03)}
+/* BUILDER MODAL */
+.bmodal-overlay{display:none;position:fixed;inset:0;background:rgba(13,43,78,0.45);z-index:1000;align-items:center;justify-content:center;padding:20px}
+.bmodal-overlay.open{display:flex}
+.bmodal{background:#fff;border:1px solid rgba(26,108,196,0.2);border-radius:14px;padding:22px;max-width:480px;width:100%;box-shadow:0 20px 50px rgba(13,43,78,0.2);max-height:90vh;overflow-y:auto}
+.bmodal h3{font-size:14px;font-weight:800;color:#0d2b4e;margin-bottom:14px;padding-bottom:9px;border-bottom:1px solid rgba(26,108,196,0.12)}
+.btabs{display:flex;gap:6px;margin-bottom:16px}
+.btab{flex:1;padding:7px;border:1px solid rgba(26,108,196,0.2);border-radius:7px;background:none;font-family:"Outfit",sans-serif;font-size:11px;font-weight:700;color:#4a7aaa;cursor:pointer;transition:all .2s}
+.btab.active{background:var(--sky);color:#fff;border-color:var(--sky)}
+.bfield{margin-bottom:12px}
+.bfield label{display:block;font-size:9px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:4px}
+.bfield input,.bfield select{width:100%;background:#edf5fd;color:var(--text);border:1px solid rgba(26,108,196,0.18);border-radius:6px;padding:7px 10px;font-size:11.5px;font-family:"Outfit",sans-serif;outline:none}
+.bfield input:focus,.bfield select:focus{border-color:var(--sky)}
+.color-swatches{display:flex;gap:6px;flex-wrap:wrap}
+.cswatch{width:24px;height:24px;border-radius:5px;cursor:pointer;border:2px solid transparent;transition:transform .15s}
+.cswatch.sel,.cswatch:hover{transform:scale(1.2);border-color:#0d2b4e}
+.badd-btn{width:100%;padding:9px;background:linear-gradient(135deg,#1a6cc4,#0891b2);border:none;border-radius:8px;color:#fff;font-family:"Outfit",sans-serif;font-size:12px;font-weight:700;cursor:pointer;margin-top:4px;transition:opacity .2s}
+.badd-btn:hover{opacity:.9}
+.bcancel{width:100%;padding:7px;background:rgba(26,108,196,0.07);border:1px solid rgba(26,108,196,0.18);border-radius:8px;color:var(--sky);font-family:"Outfit",sans-serif;font-size:11px;font-weight:700;cursor:pointer;margin-top:6px}
+
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<!-- HEADER -->
+<div class="header">
+  <div class="hll">
+    <div class="logo">📋</div>
+    <div>
+      <div class="htitle">Monthly Dashboard — <span>VMM</span></div>
+      <div class="hsub">Get all information at one place</div>
+    </div>
+  </div>
+  <div class="hrr">
+    <div class="rec-box">
+      <div class="rec-main"><span id="rec-count">12,936</span> records loaded</div>
+      <div class="rec-upd">📅 Data updated till: <strong style="color:var(--amber)">31 Mar 2026</strong></div>
+    </div>
+    <button class="help-btn" onclick="downloadCSV()">⬇️ Download</button>
+    <button class="help-btn" onclick="document.getElementById('hmodal').classList.add('open')">📖 Instructions</button>
+  </div>
+</div>
+
+<!-- FILTERS -->
+<div class="filters">
+  <div class="fg"><label>📅 Month &amp; Year</label><select id="f-month"></select></div>
+  <div class="fg"><label>🗺️ Zone</label><select id="f-zone"></select></div>
+  <div class="fg"><label>🏭 Vendor</label><select id="f-vendor"></select></div>
+  <div class="fg"><label>🏪 Store</label><select id="f-store"></select></div>
+  <div class="fg"><label>🏷️ Critical Product</label><select id="f-cp"></select></div>
+  <div class="fg" style="min-width:auto;flex:0;justify-content:flex-end"><label style="opacity:0">.</label><button class="help-btn" onclick="openBuilder()" style="white-space:nowrap;padding:7px 14px;font-size:11px">➕ Add Analytics</button></div>
+</div>
+
+<!-- 5 KPI CARDS — Overall Pending = all pending (no >30 filter) -->
+<div class="kpi-row">
+  <div class="kpi" style="--kc:#1a6cc4">
+    <div class="kpi-top"><div class="kpi-icon">📥</div><div class="kpi-badge fl" id="b-logged">—</div></div>
+    <div class="kpi-val" id="v-logged">0</div>
+    <div class="kpi-lbl">Logged</div><div class="kpi-sub">Cases logged in selected month</div>
+  </div>
+  <div class="kpi" style="--kc:#16a34a">
+    <div class="kpi-top"><div class="kpi-icon">✅</div><div class="kpi-badge fl" id="b-closed">—</div></div>
+    <div class="kpi-val" id="v-closed">0</div>
+    <div class="kpi-lbl">Closed</div><div class="kpi-sub">Logged &amp; closed same month</div>
+  </div>
+  <div class="kpi" style="--kc:#d97706">
+    <div class="kpi-top"><div class="kpi-icon">⏳</div><div class="kpi-badge fl" id="b-pending">—</div></div>
+    <div class="kpi-val" id="v-pending">0</div>
+    <div class="kpi-lbl">Pending</div><div class="kpi-sub">Logged − Closed (same month)</div>
+  </div>
+  <div class="kpi" style="--kc:#7c3aed">
+    <div class="kpi-top"><div class="kpi-icon">🔄</div><div class="kpi-badge fl" id="b-old" style="display:none">—</div></div>
+    <div class="kpi-val" id="v-old">0</div>
+    <div class="kpi-lbl">Old Closed</div><div class="kpi-sub">Closed this month, logged prior</div>
+  </div>
+  <div class="kpi" style="--kc:#e11d48">
+    <div class="kpi-top"><div class="kpi-icon">📊</div><div class="kpi-badge fl" id="b-overall" style="display:none">—</div></div>
+    <div class="kpi-val" id="v-overall">0</div>
+    <div class="kpi-lbl">Overall Pending</div>
+    <div class="kpi-sub">All pending cases till selected month</div>
+    <div style="display:flex;gap:5px;margin-top:5px;flex-wrap:wrap">
+      <div class="kpi-badge dn" style="font-size:10px;padding:2px 7px;gap:3px">▲ <span id="v-overall-gt30">0</span> &gt;30d</div>
+      <div class="kpi-badge fl" style="font-size:10px;padding:2px 7px;gap:3px;background:rgba(37,99,235,0.1);color:#2563eb">● <span id="v-overall-lt30">0</span> &lt;30d</div>
+    </div>
+</div>
+</div>
+
+<!-- ROW 1: Top 15 Stores + Zone-wise -->
+<div class="r2">
+  <div class="chart-card">
+    <div class="chart-title">🏪 Top 15 Stores — Logged Cases</div>
+    <div class="chart-sub">Stores with highest logged case count</div>
+    <canvas id="ch-store" height="150"></canvas>
+  </div>
+  <div class="chart-card">
+    <div class="chart-title">🌍 Zone-wise — Logged · Closed · Pending</div>
+    <div class="chart-sub">All zones comparison</div>
+    <canvas id="ch-zone" height="150"></canvas>
+  </div>
+</div>
+
+<!-- ROW 2: Critical Product + Critical Product Names -->
+<div class="r2">
+  <div class="chart-card">
+    <div class="chart-title">🏷️ Critical Product — Logged · Closed · Pending</div>
+    <div class="chart-sub">Critical Product vs Others</div>
+    <canvas id="ch-cp" height="145"></canvas>
+  </div>
+  <div class="chart-card">
+    <div class="chart-title">🔍 Critical Case - bifurcation of product Names</div>
+    <div class="chart-sub">Per critical product type breakdown</div>
+    <canvas id="ch-cpn" height="145"></canvas>
+  </div>
+</div>
+
+<!-- ROW 3: FM-wise Closed >30 + TAT Status -->
+<div class="r2">
+  <div class="chart-card">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:4px">
+      <div>
+        <div class="chart-title">👤 FM-wise Closed Cases &gt; 30 Days</div>
+        <div class="chart-sub">Count of closed cases with Over Due TAT &gt; 30 days per FM</div>
+      </div>
+      <div style="background:linear-gradient(135deg,#e11d48,#be123c);border-radius:8px;padding:5px 12px;text-align:center;flex-shrink:0;margin-left:10px">
+        <div style="font-size:20px;font-weight:800;color:#fff;line-height:1;letter-spacing:-0.5px" id="fm-total-num">—</div>
+        <div style="font-size:8px;font-weight:700;color:rgba(255,255,255,0.8);text-transform:uppercase;letter-spacing:0.5px;margin-top:1px">Total</div>
+      </div>
+    </div>
+    <canvas id="ch-fm" height="140"></canvas>
+  </div>
+  <div class="chart-card" style="display:flex;flex-direction:column">
+    <div class="chart-title">📊 TAT Status - Closed Case</div>
+    <div class="chart-sub" id="tat-sub">Within TAT vs Beyond TAT for logged cases</div>
+    <div style="display:flex;align-items:center;justify-content:center;gap:28px;flex:1;padding:12px 8px">
+      <div style="position:relative;width:220px;height:220px;flex-shrink:0"><canvas id="ch-tat" style="position:absolute;top:0;left:0;width:220px!important;height:220px!important"></canvas></div>
+      <div id="tat-legend" style="display:flex;flex-direction:column;gap:18px"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ROW 4: Last Delay Reason -->
+<div class="r2">
+  <div class="chart-card">
+    <div class="chart-title">⚠️ Last Delay Reason — Pending Cases</div>
+    <div class="chart-sub">Case count &amp; avg aging — pending cases by logged month</div>
+    <div id="delay-list" class="delay-list" style="max-height:200px;overflow-y:auto;margin-top:4px"></div>
+  </div>
+  <div class="chart-card" style="opacity:0;pointer-events:none"></div>
+</div>
+
+</div>
+
+<!-- INSTRUCTIONS MODAL -->
+<div class="modal-overlay" id="hmodal" onclick="if(event.target===this)this.classList.remove('open')">
+<div class="modal">
+  <h3>📖 Dashboard Instructions</h3>
+  <div class="msec">📌 KPI Definitions</div>
+  <div class="kdef">
+    <div class="kdef-row"><div class="kdot" style="background:#1a6cc4;margin-top:4px"></div>
+      <div><strong style="color:#1a6cc4">Logged</strong> — Total cases registered in the selected Month &amp; Year.</div></div>
+    <div class="kdef-row"><div class="kdot" style="background:#16a34a;margin-top:4px"></div>
+      <div><strong style="color:#16a34a">Closed</strong> — Cases logged AND closed within the same selected month.</div></div>
+    <div class="kdef-row"><div class="kdot" style="background:#d97706;margin-top:4px"></div>
+      <div><strong style="color:#d97706">Pending</strong> — Logged minus Closed for the selected month.</div></div>
+    <div class="kdef-row"><div class="kdot" style="background:#7c3aed;margin-top:4px"></div>
+      <div><strong style="color:#7c3aed">Old Closed</strong> — Cases closed this month but logged in a previous month.</div></div>
+    <div class="kdef-row"><div class="kdot" style="background:#e11d48;margin-top:4px"></div>
+      <div><strong style="color:#e11d48">Overall Pending</strong> — All unresolved cases cumulated up to the selected month.</div></div>
+  </div>
+  <div class="msec">🔽 How to Use the Filters</div>
+  <div class="mrow"><div class="mn">1</div>
+    <div class="mb"><strong>Month &amp; Year</strong> — Select a month to view KPIs for that period. % badges compare to the previous month automatically.</div></div>
+  <div class="mrow"><div class="mn">2</div>
+    <div class="mb"><strong>Zone / Vendor / Store / Critical Product</strong> — All slicers work together and update every KPI and chart instantly.</div></div>
+  <div class="mrow"><div class="mn">3</div>
+    <div class="mb"><strong>Pending &gt;30 Days chart</strong> and <strong>FM Closed &gt;30 Days chart</strong> use frozen monthly snapshots — prior month values never change when new data is added.</div></div>
+  <button class="mclose" onclick="document.getElementById('hmodal').classList.remove('open')">✕ Close</button>
+</div>
+</div>
+
+
+
+<!-- LOADING OVERLAY -->
+<div id="loading-overlay">
+  <div class="load-box">
+    <div class="spinner"></div>
+    <div style="font-size:13px;font-weight:700;color:#0d2b4e">Loading Dashboard…</div>
+    <p>Fetching live data from Google Sheets</p>
+  </div>
+</div>
+
+<!-- ANALYTICS BUILDER MODAL -->
+<div class="bmodal-overlay" id="bmodal" onclick="if(event.target===this)closeBuilder()">
+<div class="bmodal">
+  <h3>➕ Add Analytics</h3>
+  <div class="btabs">
+    <button class="btab active" id="btab-kpi" onclick="switchTab('kpi')">📊 Custom KPI</button>
+    <button class="btab" id="btab-chart" onclick="switchTab('chart')">📈 Custom Chart</button>
+  </div>
+  <div id="bpanel-kpi">
+    <div class="bfield"><label>KPI Label</label><input id="b-kpi-label" placeholder="e.g. Avg Aging Days"/></div>
+    <div class="bfield"><label>Metric</label>
+      <select id="b-kpi-metric">
+        <option value="count">Count of All Records</option>
+        <option value="closed">Count Closed</option>
+        <option value="pending">Count Pending</option>
+        <option value="logged">Count Logged (selected month)</option>
+        <option value="beyond_tat">Count Beyond TAT</option>
+        <option value="within_tat">Count Within TAT</option>
+        <option value="avg_aging">Avg Aging (days)</option>
+        <option value="sum_aging">Sum Aging (days)</option>
+        <option value="overdue_gt30">Pending &gt; 30 Days</option>
+      </select>
+    </div>
+    <div class="bfield"><label>Filter (optional)</label>
+      <select id="b-kpi-filter">
+        <option value="">No extra filter</option>
+        <option value="cp_critical">Critical Product only</option>
+        <option value="cp_others">Others only</option>
+        <option value="closed_same">Closed same month logged</option>
+        <option value="beyond_tat_f">Beyond TAT only</option>
+        <option value="within_tat_f">Within TAT only</option>
+      </select>
+    </div>
+    <div class="bfield"><label>Card Colour</label>
+      <div class="color-swatches" id="kpi-swatches">
+        <div class="cswatch sel" data-c="#1a6cc4" style="background:#1a6cc4"></div>
+        <div class="cswatch" data-c="#16a34a" style="background:#16a34a"></div>
+        <div class="cswatch" data-c="#d97706" style="background:#d97706"></div>
+        <div class="cswatch" data-c="#e11d48" style="background:#e11d48"></div>
+        <div class="cswatch" data-c="#7c3aed" style="background:#7c3aed"></div>
+        <div class="cswatch" data-c="#0891b2" style="background:#0891b2"></div>
+        <div class="cswatch" data-c="#ea580c" style="background:#ea580c"></div>
+      </div>
+    </div>
+    <button class="badd-btn" onclick="addCustomKPI()">Add KPI Card</button>
+    <button class="bcancel" onclick="closeBuilder()">Cancel</button>
+  </div>
+  <div id="bpanel-chart" style="display:none">
+    <div class="bfield"><label>Chart Title</label><input id="b-chart-title" placeholder="e.g. Cases by State"/></div>
+    <div class="bfield"><label>Chart Type</label>
+      <select id="b-chart-type">
+        <option value="bar">Bar Chart</option>
+        <option value="hbar">Horizontal Bar</option>
+        <option value="pie">Pie / Donut</option>
+        <option value="table">Data Table</option>
+        <option value="trend">Monthly Trend (Line)</option>
+      </select>
+    </div>
+    <div class="bfield" id="b-groupby-wrap"><label>Group By</label>
+      <select id="b-chart-groupby">
+        <option value="zone">Zone</option>
+        <option value="store">Store Name</option>
+        <option value="vendor">Vendor</option>
+        <option value="fm">FM Name</option>
+        <option value="pn">Product Name</option>
+        <option value="cp">Critical / Others</option>
+        <option value="tat">TAT Status</option>
+        <option value="dr">Last Delay Reason</option>
+        <option value="fs">Current Status</option>
+        <option value="state">State</option>
+        <option value="region">Store Region</option>
+        <option value="complaint_type">Type of Complaint</option>
+        <option value="nature">Nature of Problem</option>
+        <option value="product_type">Product Type</option>
+      </select>
+    </div>
+    <div class="bfield"><label>Metric</label>
+      <select id="b-chart-metric">
+        <option value="count">Count of Records</option>
+        <option value="logged">Count Logged</option>
+        <option value="closed">Count Closed</option>
+        <option value="pending">Count Pending</option>
+        <option value="beyond_tat">Count Beyond TAT</option>
+        <option value="avg_aging">Avg Aging (days)</option>
+        <option value="sum_aging">Sum Aging (days)</option>
+      </select>
+    </div>
+    <div class="bfield" id="b-topn-wrap"><label>Show Top</label>
+      <select id="b-chart-topn">
+        <option value="10">Top 10</option>
+        <option value="15">Top 15</option>
+        <option value="20">Top 20</option>
+        <option value="5">Top 5</option>
+        <option value="0">All</option>
+      </select>
+    </div>
+    <button class="badd-btn" onclick="addCustomChart()">Add Chart</button>
+    <button class="bcancel" onclick="closeBuilder()">Cancel</button>
+  </div>
+</div>
+</div>
+
+
+<script>
+Chart.register(ChartDataLabels);
+
+// =====================================================
+// CONFIG — paste your Apps Script deployment URL here
+// =====================================================
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyB2hfQQ-NzOfzjHD2L5E8JFbsoBmV50mC5QaGpSyHlk7ss8_QK-sATlyI7llhKn3ixpQ/exec';
+
+const CRITICAL_PRODUCTS = new Set([
+  'genset','electrical','electrical panel','ac',
+  'server room ac','sensormatic','tiles','led light'
+]);
+const MON  = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const MMAP = {Jan:0,Feb:1,Mar:2,Apr:3,May:4,Jun:5,Jul:6,Aug:7,Sep:8,Oct:9,Nov:10,Dec:11};
+
+// STATE
+let RAW = [];
+let customKPIs = [], customCharts = [];
+let selectedKPIColor = '#1a6cc4';
+
+// UTILS
+function m2n(m){if(!m)return -1;const p=m.split("'");return p.length<2?-1:(2000+parseInt(p[1]))*12+(MMAP[p[0]]||0);}
+function fmtMY(d){if(!d||isNaN(d.getTime()))return'';return MON[d.getMonth()]+"'"+String(d.getFullYear()).slice(2);}
+function parseDate(v){
+  if(!v)return null;const s=String(v).trim();if(!s)return null;
+  const m=s.match(/(\d{2})-(\d{2})-(\d{4})/);
+  if(m)return new Date(+m[3],+m[2]-1,+m[1]);
+  const d=new Date(s);return isNaN(d.getTime())?null:d;
+}
+
+// TRANSFORM
+function transformRow(row){
+  const ld=parseDate(row['Complaint Date']);if(!ld)return null;
+  const cd=parseDate(row['Date of Closure']);
+  const pn=String(row['Product Name']||'').trim();
+  const otat=parseFloat(row['Over Due TAT'])||0;
+  return{ld,lmy:fmtMY(ld),cd,cmy:cd?fmtMY(cd):null,
+    fs:String(row['Current Status']||'').trim(),
+    zone:String(row['Zone']||'').trim(),
+    vendor:String(row['Product Vendor']||'').trim(),
+    store:String(row['Store Name']||'').trim(),
+    cp:CRITICAL_PRODUCTS.has(pn.toLowerCase())?'Critical Product':'Others',
+    tat:otat===0?'Within TAT':'Beyond TAT',
+    dr:String(row['Last Delay reason']||'').trim(),
+    aging:parseFloat(row['Aging'])||0,pn,
+    fm:String(row['Updated FM Name']||row['FM Name']||'').trim(),otat,_raw:row};
+}
+
+// LOAD
+async function loadData(){
+  showLoading(true);
+  try{
+    const res=await fetch(SCRIPT_URL);
+    if(!res.ok)throw new Error('HTTP '+res.status);
+    const json=await res.json();
+    if(json.error)throw new Error(json.error);
+    RAW=json.data.map(transformRow).filter(Boolean);
+    document.getElementById('rec-count').textContent=RAW.length.toLocaleString();
+    const dates=RAW.filter(d=>d.ld).map(d=>d.ld.getTime());
+    if(dates.length){
+      const el=document.querySelector('.rec-upd strong');
+      if(el)el.textContent=new Date(Math.max(...dates)).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});
+    }
+    initFilters();render();
+    renderStoreWidget(document.getElementById('f-month').value);
+  }catch(e){showError(e.message);}
+  showLoading(false);
+}
+function showLoading(on){document.getElementById('loading-overlay').style.display=on?'flex':'none';}
+function showError(msg){
+  const el=document.getElementById('loading-overlay');
+  el.innerHTML='<div class="load-box"><div style="font-size:32px">⚠️</div><div style="font-size:14px;font-weight:700;color:#0d2b4e;margin-top:8px">Failed to load data</div><div style="font-size:11px;color:#4a7aaa;margin-top:6px">'+msg+'</div><button onclick="loadData()" style="margin-top:14px;padding:7px 18px;border-radius:7px;border:1px solid rgba(225,29,72,0.3);background:rgba(225,29,72,0.08);color:#e11d48;cursor:pointer;font-family:Outfit,sans-serif;font-weight:700;font-size:12px">🔄 Retry</button></div>';
+  el.style.display='flex';
+}
+
+// FILTERS
+function initFilters(){
+  const ALL_MONTHS=[...new Set(RAW.map(d=>d.lmy).filter(Boolean))].sort((a,b)=>m2n(a)-m2n(b));
+  const mSel=document.getElementById('f-month');
+  mSel.innerHTML="<option value=''>All Months</option>";
+  ALL_MONTHS.forEach(m=>mSel.innerHTML+='<option value="'+m+'">'+m+'</option>');
+  mSel.value=ALL_MONTHS[ALL_MONTHS.length-1]||'';
+  fillSel('f-zone',[...new Set(RAW.map(d=>d.zone).filter(Boolean))].sort(),'Zones');
+  fillSel('f-vendor',[...new Set(RAW.map(d=>d.vendor).filter(Boolean))].sort(),'Vendors');
+  fillSel('f-store',[...new Set(RAW.map(d=>d.store).filter(Boolean))].sort(),'Stores');
+  fillSel('f-cp',['Critical Product','Others'],'Category');
+  ['f-month','f-zone','f-vendor','f-store','f-cp'].forEach(id=>
+    document.getElementById(id).addEventListener('change',()=>{
+      render();renderCustomKPIs();renderCustomCharts();
+      renderStoreWidget(document.getElementById('f-month').value);
+    }));
+}
+function fillSel(id,vals,lbl){
+  const el=document.getElementById(id);
+  el.innerHTML='<option value="">All '+lbl+'</option>';
+  vals.forEach(v=>el.innerHTML+='<option value="'+v+'">'+v+'</option>');
+}
+
+// CHART HELPERS
+const CH={};
+const TIP={backgroundColor:"#fff",borderColor:"rgba(26,108,196,0.18)",borderWidth:1,titleColor:"#0d2b4e",bodyColor:"#4a7aaa",padding:9,cornerRadius:7};
+const NG={display:false};const TX={color:"#4a7aaa",font:{family:"Outfit",size:9}};
+const SB={grid:NG,ticks:TX,border:{display:false}};
+const C3=["rgba(26,108,196,0.78)","rgba(22,163,74,0.78)","rgba(217,119,6,0.78)"];
+const L3=["Logged","Closed","Pending"];
+const PALETTE=['rgba(26,108,196,0.78)','rgba(22,163,74,0.78)','rgba(217,119,6,0.78)','rgba(225,29,72,0.78)','rgba(124,58,237,0.78)','rgba(8,145,178,0.78)','rgba(234,88,12,0.78)','rgba(16,185,129,0.78)','rgba(251,191,36,0.78)','rgba(99,102,241,0.78)','rgba(236,72,153,0.78)','rgba(20,184,166,0.78)'];
+
+function mkBar(id,labels,datasets,opts={}){
+  if(CH[id])CH[id].destroy();const el=document.getElementById(id);if(!el)return;
+  CH[id]=new Chart(el.getContext('2d'),{type:"bar",data:{labels,datasets},options:{
+    responsive:true,layout:{padding:{top:16}},
+    plugins:{legend:{display:true,labels:{color:"#0d2b4e",font:{family:"Outfit",size:9},usePointStyle:true,pointStyle:"rect",padding:9,boxWidth:8,boxHeight:8}},
+      tooltip:TIP,datalabels:{color:"#0d2b4e",font:{family:"Outfit",size:8,weight:"700"},anchor:"end",align:"end",offset:1,formatter:v=>v>0?v.toLocaleString():"",...(opts.dl||{})}},
+    scales:{x:{...SB,...(opts.x||{})},y:{...SB,beginAtZero:true,...(opts.y||{})}},
+    ...(opts.extra||{})}});
+}
+function mkPie(id,labels,data,colors){
+  if(CH[id])CH[id].destroy();const el=document.getElementById(id);if(!el)return;
+  CH[id]=new Chart(el.getContext('2d'),{type:"doughnut",data:{labels,datasets:[{data,backgroundColor:colors,borderWidth:2,borderColor:"#fff",hoverOffset:6}]},options:{
+    responsive:false,maintainAspectRatio:false,cutout:"60%",
+    plugins:{legend:{display:false},tooltip:{...TIP,callbacks:{label:c=>{const t=c.dataset.data.reduce((a,b)=>a+b,0);return" "+c.label+": "+c.raw+" ("+(t>0?(c.raw/t*100).toFixed(1):0)+"%)";}}},datalabels:{display:false}}}});
+}
+function mkLine(id,labels,datasets){
+  if(CH[id])CH[id].destroy();const el=document.getElementById(id);if(!el)return;
+  CH[id]=new Chart(el.getContext('2d'),{type:"line",data:{labels,datasets},options:{
+    responsive:true,layout:{padding:{top:16}},
+    plugins:{legend:{display:true,labels:{color:"#0d2b4e",font:{family:"Outfit",size:9},usePointStyle:true,pointStyle:"circle",padding:10,boxWidth:8,boxHeight:8}},
+      tooltip:TIP,datalabels:{color:"#0d2b4e",font:{family:"Outfit",size:8,weight:"700"},anchor:"end",align:"top",offset:2,formatter:v=>v>0?v:""}},
+    scales:{x:{...SB},y:{...SB,beginAtZero:true}}}});
+}
+
+// CALC
+function calc(recs,sM){
+  if(!sM){const lg=recs.length,cl=recs.filter(d=>d.fs==="Closed").length,pe=recs.filter(d=>d.fs==="Pending").length;return[lg,cl,pe,0,pe];}
+  const mn=m2n(sM);
+  const lg=recs.filter(d=>d.lmy===sM).length;
+  const cl=recs.filter(d=>d.cmy===sM&&d.lmy===sM&&d.fs==="Closed").length;
+  const pe=lg-cl;
+  const oc=recs.filter(d=>d.cmy===sM&&m2n(d.lmy)<mn&&d.fs==="Closed").length;
+  const op=recs.filter(d=>d.fs==="Pending"&&m2n(d.lmy)<=mn).length;
+  return[lg,cl,pe,oc,op];
+}
+function setBadge(id,curr,prev){
+  const el=document.getElementById(id);if(!el)return;
+  if(prev==null||prev===0){el.textContent="—";el.className="kpi-badge fl";return;}
+  const pct=((curr-prev)/Math.max(prev,1)*100).toFixed(1);
+  el.textContent=(curr>=prev?"▲ ":"▼ ")+Math.abs(pct)+"%";
+  el.className="kpi-badge "+(curr>=prev?"up":"dn");
+}
+function animNum(id,target){
+  const el=document.getElementById(id);if(!el)return;
+  const start=parseInt(el.textContent.replace(/,/g,""))||0;
+  const diff=target-start,dur=400,t0=performance.now();
+  (function step(now){const t=Math.min((now-t0)/dur,1),e=t<.5?2*t*t:1-Math.pow(-2*t+2,2)/2;
+    el.textContent=Math.round(start+diff*e).toLocaleString();if(t<1)requestAnimationFrame(step);})(t0);
+}
+
+// BASE FILTER
+function getBase(){
+  const sZ=document.getElementById("f-zone").value,sV=document.getElementById("f-vendor").value,
+        sSt=document.getElementById("f-store").value,sCP=document.getElementById("f-cp").value;
+  return RAW.filter(d=>{
+    if(sZ&&d.zone!==sZ)return false;if(sV&&d.vendor!==sV)return false;
+    if(sSt&&d.store!==sSt)return false;if(sCP&&d.cp!==sCP)return false;return true;
+  });
+}
+
+// MAIN RENDER
+function render(){
+  const sM=document.getElementById("f-month").value;
+  const base=getBase();const mn=m2n(sM);
+  const ALL_MONTHS=[...new Set(RAW.map(d=>d.lmy).filter(Boolean))].sort((a,b)=>m2n(a)-m2n(b));
+  const ALL_ZONES=[...new Set(RAW.map(d=>d.zone).filter(Boolean))].sort();
+
+  // KPIs
+  const kLg=sM?base.filter(d=>d.lmy===sM).length:base.length;
+  const kCl=sM?base.filter(d=>d.cmy===sM&&d.lmy===sM&&d.fs==="Closed").length:base.filter(d=>d.fs==="Closed"&&d.lmy===d.cmy).length;
+  const kPe=sM?kLg-kCl:base.filter(d=>d.fs==="Pending").length;
+  const kOc=sM?base.filter(d=>d.cmy===sM&&m2n(d.lmy)<mn&&d.fs==="Closed").length:base.filter(d=>d.fs==="Closed"&&d.lmy!==d.cmy).length;
+  const kOp=sM?base.filter(d=>d.fs==="Pending"&&m2n(d.lmy)<=mn).length:base.filter(d=>d.fs==="Pending").length;
+  animNum("v-logged",kLg);animNum("v-closed",kCl);animNum("v-pending",kPe);animNum("v-old",kOc);animNum("v-overall",kOp);
+  const allPend=sM?base.filter(d=>d.fs==="Pending"&&m2n(d.lmy)<=mn):base.filter(d=>d.fs==="Pending");
+  animNum("v-overall-gt30",allPend.filter(d=>d.aging>30).length);
+  animNum("v-overall-lt30",allPend.filter(d=>d.aging<=30).length);
+
+  // Badges
+  if(sM){
+    const mIdx=ALL_MONTHS.indexOf(sM);
+    if(mIdx>0){
+      const pm=ALL_MONTHS[mIdx-1];const pb=getBase();
+      const pLg=pb.filter(d=>d.lmy===pm).length;
+      const pCl=pb.filter(d=>d.cmy===pm&&d.lmy===pm&&d.fs==="Closed").length;
+      setBadge("b-logged",kLg,pLg);setBadge("b-closed",kCl,pCl);setBadge("b-pending",kPe,pLg-pCl);
+    }else["b-logged","b-closed","b-pending"].forEach(id=>setBadge(id,0,null));
+  }else["b-logged","b-closed","b-pending"].forEach(id=>setBadge(id,0,null));
+
+  // TAT Pie
+  const tatRecs=sM?base.filter(d=>d.lmy===sM&&d.cmy===sM&&d.fs==="Closed"):base.filter(d=>d.fs==="Closed"&&d.lmy===d.cmy);
+  const tatW=tatRecs.filter(d=>d.tat==="Within TAT").length,tatB=tatRecs.filter(d=>d.tat==="Beyond TAT").length,tatTotal=tatW+tatB;
+  document.getElementById("tat-sub").textContent="Logged & closed same month — "+(sM||"All Months");
+  mkPie("ch-tat",["Within TAT","Beyond TAT"],[tatW,tatB],["rgba(22,163,74,0.85)","rgba(225,29,72,0.85)"]);
+  document.getElementById("tat-legend").innerHTML=[{label:"Within TAT",val:tatW,color:"#16a34a"},{label:"Beyond TAT",val:tatB,color:"#e11d48"}]
+    .map(item=>{const pct=tatTotal>0?(item.val/tatTotal*100).toFixed(1):0;
+      return '<div style="display:flex;align-items:center;gap:12px"><div style="width:14px;height:14px;border-radius:3px;background:'+item.color+';flex-shrink:0"></div><div><div style="font-size:28px;font-weight:800;color:#0d2b4e;line-height:1.1;letter-spacing:-0.5px">'+item.val.toLocaleString()+'</div><div style="font-size:11px;font-weight:700;color:'+item.color+'">'+pct+'%</div><div style="font-size:10px;color:#4a7aaa;margin-top:2px">'+item.label+'</div></div></div>';
+    }).join("");
+
+  // CP charts
+  const bCP=sM?base.filter(d=>d.lmy===sM):base;
+  mkBar("ch-cp",["Critical Product","Others"],L3.map((lbl,i)=>({label:lbl,data:["Critical Product","Others"].map(g=>calc(bCP.filter(d=>d.cp===g),sM)[i]),backgroundColor:C3[i],borderRadius:3})));
+  const cpNM={};bCP.filter(d=>d.cp==="Critical Product").forEach(d=>{const n=d.pn||"Unknown";if(!cpNM[n])cpNM[n]=[];cpNM[n].push(d);});
+  const cpA=Object.entries(cpNM).sort((a,b)=>b[1].length-a[1].length).slice(0,8);
+  mkBar("ch-cpn",cpA.map(([n])=>n),L3.map((lbl,i)=>({label:lbl,data:cpA.map(([,r])=>calc(r,sM)[i]),backgroundColor:C3[i],borderRadius:3})));
+
+  // FM closed >30
+  const fmData={};
+  base.filter(d=>d.fs==="Closed"&&d.otat>30&&(!sM||d.cmy===sM)).forEach(d=>{const fm=d.fm||"Unknown";fmData[fm]=(fmData[fm]||0)+1;});
+  const fmArr=Object.entries(fmData).sort((a,b)=>b[1]-a[1]).slice(0,12);
+  const fmTotalEl=document.getElementById("fm-total-num");
+  if(fmTotalEl)fmTotalEl.textContent=Object.values(fmData).reduce((s,c)=>s+c,0).toLocaleString();
+  mkBar("ch-fm",fmArr.map(([fm])=>fm),[{label:"Closed >30 Days",data:fmArr.map(([,c])=>c),backgroundColor:"rgba(225,29,72,0.75)",borderRadius:3}],
+    {dl:{formatter:v=>v>0?v:""},extra:{plugins:{legend:{display:false}}}});
+
+  // Top 15 stores
+  const stMap={};(sM?base.filter(d=>d.lmy===sM):base).forEach(d=>{if(!d.store)return;stMap[d.store]=(stMap[d.store]||0)+1;});
+  const stArr=Object.entries(stMap).sort((a,b)=>b[1]-a[1]).slice(0,15);
+  mkBar("ch-store",stArr.map(([s])=>s),[{label:"Logged",data:stArr.map(([,c])=>c),backgroundColor:"rgba(167,139,250,0.85)",borderRadius:3}],
+    {dl:{formatter:v=>v>0?v:"",color:"#fff",font:{weight:"700",size:11}},extra:{plugins:{legend:{display:false}}},x:{...SB,ticks:{...TX,maxRotation:38,minRotation:30}}});
+
+  // Zone
+  mkBar("ch-zone",ALL_ZONES,L3.map((lbl,i)=>({label:lbl,data:ALL_ZONES.map(z=>calc(base.filter(d=>d.zone===z),sM)[i]),backgroundColor:C3[i],borderRadius:3})));
+
+  // Delay reason
+  const drMap={};
+  base.filter(d=>d.fs==="Pending"&&(!sM||d.lmy===sM)).forEach(d=>{
+    const r=d.dr||"Unspecified";if(!r||r==="Unspecified")return;
+    if(!drMap[r])drMap[r]={count:0,n:0,total:0};
+    drMap[r].count++;const a=parseFloat(d.aging);if(!isNaN(a)&&a>0){drMap[r].n++;drMap[r].total+=a;}
+  });
+  const drArr=Object.entries(drMap).filter(([,v])=>v.count>0).sort((a,b)=>b[1].count-a[1].count);
+  const totalKnown=drArr.reduce((s,[,v])=>s+v.count,0),maxC=drArr[0]?drArr[0][1].count:1;
+  document.getElementById("delay-list").innerHTML=drArr.length===0
+    ?'<div style="color:var(--muted);font-size:11px;padding:12px 0;text-align:center">No pending cases for selected filters</div>'
+    :drArr.map(([name,v],i)=>{
+      const pct=totalKnown>0?(v.count/totalKnown*100).toFixed(1):0,avgAge=v.n>0?(v.total/v.n).toFixed(1):"—";
+      return '<div class="dr"><div class="dr-rank">#'+(i+1)+'</div><div class="dr-name" title="'+name+'">'+name+'</div><div class="dr-bwrap"><div class="dr-bar" style="width:'+(v.count/maxC*100).toFixed(1)+'%"></div></div><div class="dr-count">'+pct+'%</div><div class="dr-age">⏱ '+avgAge+'d avg</div></div>';
+    }).join("");
+}
+
+// STORE WIDGET
+function renderStoreWidget(sM){
+  if(!RAW.length)return;
+  const ALL_MONTHS=[...new Set(RAW.map(d=>d.lmy).filter(Boolean))].sort((a,b)=>m2n(a)-m2n(b));
+  const monthStores={};
+  RAW.forEach(d=>{if(!d.lmy||!d.store)return;if(!monthStores[d.lmy])monthStores[d.lmy]=new Set();monthStores[d.lmy].add(d.store);});
+  const SC={};ALL_MONTHS.forEach(m=>SC[m]=monthStores[m]?monthStores[m].size:0);
+  const activeM=(sM&&SC[sM])?sM:ALL_MONTHS[ALL_MONTHS.length-1];
+  const cur=SC[activeM]||0,idx=ALL_MONTHS.indexOf(activeM),prev=idx>0?SC[ALL_MONTHS[idx-1]]:null;
+  document.getElementById("sw-num").textContent=cur.toLocaleString();
+  document.getElementById("sw-month-lbl").textContent=activeM+" — Active stores";
+  const badge=document.getElementById("sw-badge");
+  if(prev!==null){const diff=cur-prev;badge.textContent=(diff>=0?"▲ ":"▼ ")+Math.abs(diff)+" vs prev";badge.className="sw-badge "+(diff>=0?"up":"dn");}
+  else{badge.textContent="All time";badge.className="sw-badge fl";}
+  const vals=ALL_MONTHS.map(m=>SC[m]),minV=Math.min(...vals),maxV=Math.max(...vals);
+  document.getElementById("sw-spark").innerHTML=ALL_MONTHS.map(m=>{
+    const h=maxV===minV?100:Math.max(12,Math.round((SC[m]-minV)/(maxV-minV)*100));
+    return '<span class="'+(m===activeM?"sw-active":"")+'" style="height:'+h+'%" data-tip="'+m+': '+SC[m]+'"></span>';
+  }).join("");
+}
+
+// DOWNLOAD
+function downloadCSV(){
+  const sM=document.getElementById('f-month').value;
+  const filtered=sM?getBase().filter(d=>d.lmy===sM):getBase();
+  if(!filtered.length){alert('No data for current selection');return;}
+  const headers=Object.keys(filtered[0]._raw).filter(h=>h!=='');
+  const fmtD=v=>{if(!v)return'';const d=parseDate(String(v));return d?d.toLocaleDateString('en-GB',{day:'2-digit',month:'2-digit',year:'numeric'}):String(v);};
+  const rows=[headers.map(h=>'"'+h+'"').join(','),
+    ...filtered.map(d=>headers.map(h=>{
+      const v=d._raw[h],hl=String(h).toLowerCase();
+      return(v instanceof Date||hl.includes('date'))?'"'+fmtD(v)+'"':'"'+String(v==null?'':v).replace(/"/g,'""')+'"';
+    }).join(','))];
+  const blob=new Blob([rows.join('\n')],{type:'text/csv'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');a.href=url;
+  a.download='VMM_'+(sM||'All')+'_'+new Date().toISOString().slice(0,10)+'.csv';
+  a.click();URL.revokeObjectURL(url);
+}
+
+// BUILDER
+function openBuilder(){document.getElementById('bmodal').classList.add('open');}
+function closeBuilder(){document.getElementById('bmodal').classList.remove('open');}
+function switchTab(t){
+  document.getElementById('bpanel-kpi').style.display=t==='kpi'?'':'none';
+  document.getElementById('bpanel-chart').style.display=t==='chart'?'':'none';
+  document.getElementById('btab-kpi').className='btab'+(t==='kpi'?' active':'');
+  document.getElementById('btab-chart').className='btab'+(t==='chart'?' active':'');
+}
+document.addEventListener('DOMContentLoaded',()=>{
+  document.querySelectorAll('#kpi-swatches .cswatch').forEach(el=>{
+    el.addEventListener('click',function(){
+      document.querySelectorAll('#kpi-swatches .cswatch').forEach(s=>s.classList.remove('sel'));
+      this.classList.add('sel');selectedKPIColor=this.dataset.c;
+    });
+  });
+  document.getElementById('b-chart-type').addEventListener('change',function(){
+    const isTrend=this.value==='trend';
+    document.getElementById('b-groupby-wrap').style.display=isTrend?'none':'';
+    document.getElementById('b-topn-wrap').style.display=(isTrend||this.value==='pie')?'none':'';
+  });
+});
+
+// CUSTOM KPI
+function computeMetric(recs,metric,sM){
+  const mn=m2n(sM);
+  switch(metric){
+    case'count':return recs.length;
+    case'logged':return sM?recs.filter(d=>d.lmy===sM).length:recs.length;
+    case'closed':return sM?recs.filter(d=>d.cmy===sM&&d.lmy===sM&&d.fs==="Closed").length:recs.filter(d=>d.fs==="Closed").length;
+    case'pending':return sM?recs.filter(d=>d.fs==="Pending"&&m2n(d.lmy)<=mn).length:recs.filter(d=>d.fs==="Pending").length;
+    case'beyond_tat':return recs.filter(d=>d.tat==="Beyond TAT").length;
+    case'within_tat':return recs.filter(d=>d.tat==="Within TAT").length;
+    case'avg_aging':return recs.length?+(recs.reduce((s,d)=>s+d.aging,0)/recs.length).toFixed(1):0;
+    case'sum_aging':return +recs.reduce((s,d)=>s+d.aging,0).toFixed(0);
+    default:return recs.length;
+  }
+}
+function applyKPIFilter(recs,filter){
+  switch(filter){
+    case'cp_critical':return recs.filter(d=>d.cp==="Critical Product");
+    case'cp_others':return recs.filter(d=>d.cp==="Others");
+    case'closed_same':return recs.filter(d=>d.fs==="Closed"&&d.lmy===d.cmy);
+    case'beyond_tat_f':return recs.filter(d=>d.tat==="Beyond TAT");
+    case'within_tat_f':return recs.filter(d=>d.tat==="Within TAT");
+    default:return recs;
+  }
+}
+function addCustomKPI(){
+  const label=document.getElementById('b-kpi-label').value.trim()||'Custom KPI';
+  const metric=document.getElementById('b-kpi-metric').value;
+  const filter=document.getElementById('b-kpi-filter').value;
+  customKPIs.push({id:'ckpi-'+Date.now(),label,metric,filter,color:selectedKPIColor});
+  ensureCustomKPIRow();renderCustomKPIs();closeBuilder();
+  document.getElementById('b-kpi-label').value='';
+}
+function ensureCustomKPIRow(){
+  if(!document.getElementById('custom-kpi-row')){
+    const div=document.createElement('div');div.id='custom-kpi-row';div.className='custom-kpi-row';
+    const kpiRow=document.querySelector('.kpi-row');kpiRow.parentNode.insertBefore(div,kpiRow.nextSibling);
+  }
+}
+function renderCustomKPIs(){
+  const row=document.getElementById('custom-kpi-row');if(!row)return;
+  const sM=document.getElementById('f-month').value,mn=m2n(sM),base=getBase();
+  row.innerHTML=customKPIs.map(cfg=>{
+    const recs=applyKPIFilter(base,cfg.filter);
+    const val=cfg.metric==='overdue_gt30'
+      ?(sM?base.filter(d=>d.fs==="Pending"&&m2n(d.lmy)<=mn):base.filter(d=>d.fs==="Pending")).filter(d=>d.aging>30).length
+      :computeMetric(recs,cfg.metric,sM);
+    return '<div class="custom-kpi-card" style="--ckc:'+cfg.color+'"><button class="rm-btn" onclick="removeKPI(''+cfg.id+'')">&#10005;</button><div class="kpi-val">'+(typeof val==='number'&&val%1!==0?val.toFixed(1):val.toLocaleString())+'</div><div class="kpi-lbl">'+cfg.label+'</div></div>';
+  }).join('');
+}
+function removeKPI(id){customKPIs=customKPIs.filter(k=>k.id!==id);renderCustomKPIs();}
+
+// CUSTOM CHARTS
+function getDimVal(d,dim){
+  switch(dim){
+    case'zone':return d.zone;case'store':return d.store;case'vendor':return d.vendor;
+    case'fm':return d.fm;case'pn':return d.pn;case'cp':return d.cp;
+    case'tat':return d.tat;case'dr':return d.dr||'Unspecified';case'fs':return d.fs;case'lmy':return d.lmy;
+    case'state':return String(d._raw['State']||'Unknown');case'region':return String(d._raw['Store Region']||'Unknown');
+    case'complaint_type':return String(d._raw['Type of Complaint']||'Unknown');
+    case'nature':return String(d._raw['Nature of Problem']||'Unknown');
+    case'product_type':return String(d._raw['Product Type']||'Unknown');
+    default:return'Unknown';
+  }
+}
+function getDimLabel(dim){return{zone:'Zone',store:'Store Name',vendor:'Vendor',fm:'FM Name',pn:'Product Name',cp:'Critical/Others',tat:'TAT Status',dr:'Delay Reason',fs:'Status',lmy:'Month',state:'State',region:'Store Region',complaint_type:'Complaint Type',nature:'Nature',product_type:'Product Type'}[dim]||dim;}
+function getMetricLabel(metric){return{count:'Count',logged:'Logged',closed:'Closed',pending:'Pending',beyond_tat:'Beyond TAT',avg_aging:'Avg Aging (d)',sum_aging:'Sum Aging (d)'}[metric]||metric;}
+
+function addCustomChart(){
+  const title=document.getElementById('b-chart-title').value.trim();
+  const type=document.getElementById('b-chart-type').value;
+  const groupby=document.getElementById('b-chart-groupby').value;
+  const metric=document.getElementById('b-chart-metric').value;
+  const topn=parseInt(document.getElementById('b-chart-topn').value)||0;
+  const id='cc-'+Date.now(),canvasId='ccc-'+Date.now();
+  customCharts.push({id,canvasId,title,type,groupby,metric,topn});
+  ensureCustomChartsWrap();addCustomChartCard({id,canvasId,title,type,groupby,metric,topn});
+  closeBuilder();document.getElementById('b-chart-title').value='';
+}
+function ensureCustomChartsWrap(){
+  if(!document.getElementById('custom-charts-wrap')){
+    const div=document.createElement('div');div.id='custom-charts-wrap';div.className='custom-charts-wrap';
+    document.querySelector('.wrap').appendChild(div);
+  }
+}
+function addCustomChartCard(cfg){
+  const wrap=document.getElementById('custom-charts-wrap');
+  const card=document.createElement('div');card.className='custom-chart-card';card.id=cfg.id;
+  const displayTitle=cfg.title||(cfg.type==='trend'?'Monthly Trend':getDimLabel(cfg.groupby)+' — '+getMetricLabel(cfg.metric));
+  card.innerHTML='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px"><div><div class="chart-title">'+displayTitle+'</div><div class="chart-sub">'+getMetricLabel(cfg.metric)+' by '+(cfg.type==='trend'?'Month':getDimLabel(cfg.groupby))+'</div></div><button class="rm-btn" onclick="removeChart(''+cfg.id+'')" style="position:relative;top:auto;right:auto">✕ Remove</button></div>'+(cfg.type==='table'?'<div id="tbl-'+cfg.canvasId+'"></div>':'<canvas id="'+cfg.canvasId+'" height="160"></canvas>');
+  wrap.appendChild(card);
+  renderOneCustomChart(cfg);
+}
+function renderCustomCharts(){customCharts.forEach(cfg=>renderOneCustomChart(cfg));}
+function renderOneCustomChart(cfg){
+  const sM=document.getElementById('f-month').value,base=getBase(),mn=m2n(sM);
+  if(cfg.type==='trend'){
+    const ALL_MONTHS=[...new Set(RAW.map(d=>d.lmy).filter(Boolean))].sort((a,b)=>m2n(a)-m2n(b));
+    mkLine(cfg.canvasId,ALL_MONTHS,[{label:getMetricLabel(cfg.metric),data:ALL_MONTHS.map(m=>computeMetric(base,cfg.metric,m)),borderColor:'rgba(26,108,196,0.9)',backgroundColor:'rgba(26,108,196,0.1)',borderWidth:2,fill:true,tension:0.3,pointRadius:3}]);
+    return;
+  }
+  const grouped={};base.forEach(d=>{const k=getDimVal(d,cfg.groupby)||'Unknown';if(!grouped[k])grouped[k]=[];grouped[k].push(d);});
+  let entries=Object.entries(grouped).map(([k,recs])=>([k,computeMetric(recs,cfg.metric,sM)]));
+  entries.sort((a,b)=>b[1]-a[1]);if(cfg.topn>0)entries=entries.slice(0,cfg.topn);
+  const labels=entries.map(([k])=>k),vals=entries.map(([,v])=>v);
+  if(cfg.type==='table'){
+    const el=document.getElementById('tbl-'+cfg.canvasId);if(!el)return;
+    el.innerHTML='<table class="custom-table"><thead><tr><th>#</th><th>'+getDimLabel(cfg.groupby)+'</th><th>'+getMetricLabel(cfg.metric)+'</th></tr></thead><tbody>'+labels.map((l,i)=>'<tr><td>'+(i+1)+'</td><td>'+l+'</td><td>'+(typeof vals[i]==='number'&&vals[i]%1!==0?vals[i].toFixed(1):vals[i].toLocaleString())+'</td></tr>').join('')+'</tbody></table>';
+    return;
+  }
+  if(cfg.type==='pie'){mkPie(cfg.canvasId,labels,vals,PALETTE.slice(0,labels.length));return;}
+  if(CH[cfg.canvasId])CH[cfg.canvasId].destroy();
+  const el=document.getElementById(cfg.canvasId);if(!el)return;
+  CH[cfg.canvasId]=new Chart(el.getContext('2d'),{type:'bar',data:{labels,datasets:[{label:getMetricLabel(cfg.metric),data:vals,backgroundColor:PALETTE.slice(0,labels.length),borderRadius:3}]},options:{
+    indexAxis:cfg.type==='hbar'?'y':'x',responsive:true,layout:{padding:{top:16}},
+    plugins:{legend:{display:false},tooltip:TIP,datalabels:{color:"#0d2b4e",font:{family:"Outfit",size:8,weight:"700"},anchor:"end",align:"end",offset:1,formatter:v=>v>0?v.toLocaleString():""}},
+    scales:{x:{...SB},y:{...SB,beginAtZero:true}}}});
+}
+function removeChart(id){customCharts=customCharts.filter(c=>c.id!==id);const el=document.getElementById(id);if(el)el.remove();}
+
+// START
+loadData();
+</script>
+
+
+<!-- FLOATING STORE WIDGET -->
+<div id="store-widget">
+  <button class="sw-close" onclick="document.getElementById('store-widget').classList.add('hidden')" title="Close">✕</button>
+  <div class="sw-title">🏪 Active Stores</div>
+  <div class="sw-main">
+    <div class="sw-num" id="sw-num">—</div>
+    <div class="sw-badge fl" id="sw-badge">—</div>
+  </div>
+  <div class="sw-lbl" id="sw-month-lbl">Network store count</div>
+  <div class="sw-spark" id="sw-spark"></div>
+</div>
+
+</body>
+</html>
