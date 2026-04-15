@@ -395,6 +395,22 @@ body{font-family:"Outfit",sans-serif;background:var(--bg);color:var(--text);min-
   </div>
 </div>
 
+<!-- PIN MODAL -->
+<div id="pin-overlay" style="display:none;position:fixed;inset:0;background:rgba(13,43,78,0.5);z-index:2000;align-items:center;justify-content:center">
+  <div style="background:#fff;border-radius:14px;padding:28px 32px;max-width:320px;width:100%;box-shadow:0 20px 50px rgba(13,43,78,0.25);text-align:center">
+    <div style="font-size:28px;margin-bottom:8px">🔒</div>
+    <div style="font-size:14px;font-weight:800;color:#0d2b4e;margin-bottom:4px">Analytics Builder</div>
+    <div style="font-size:11px;color:#4a7aaa;margin-bottom:18px">Enter your PIN to continue</div>
+    <input id="pin-input" type="password" maxlength="10" placeholder="Enter PIN"
+      style="width:100%;box-sizing:border-box;padding:10px 14px;border:1.5px solid rgba(26,108,196,0.25);border-radius:8px;font-size:16px;font-family:Outfit,sans-serif;text-align:center;letter-spacing:4px;outline:none;color:#0d2b4e;margin-bottom:10px">
+    <div id="pin-error" style="font-size:11px;color:#e11d48;min-height:16px;margin-bottom:10px"></div>
+    <div style="display:flex;gap:8px">
+      <button onclick="closePinModal()" style="flex:1;padding:9px;border:1px solid rgba(26,108,196,0.2);border-radius:8px;background:#f0f6ff;color:#4a7aaa;font-family:Outfit,sans-serif;font-weight:700;font-size:12px;cursor:pointer">Cancel</button>
+      <button onclick="checkPin()" style="flex:1;padding:9px;border:none;border-radius:8px;background:#1a6cc4;color:#fff;font-family:Outfit,sans-serif;font-weight:700;font-size:12px;cursor:pointer">Unlock</button>
+    </div>
+  </div>
+</div>
+
 <!-- ANALYTICS BUILDER MODAL -->
 <div class="bmodal-overlay" id="bmodal" onclick="if(event.target===this)closeBuilder()">
 <div class="bmodal">
@@ -898,7 +914,20 @@ function downloadCSV(){
 }
 
 // BUILDER
-function openBuilder(){document.getElementById('bmodal').classList.add('open');}
+const BUILDER_PIN='4r5t6y';
+function openBuilder(){
+  if(sessionStorage.getItem('vmm_auth')==='1'){document.getElementById('bmodal').classList.add('open');return;}
+  const ov=document.getElementById('pin-overlay');ov.style.display='flex';
+  const inp=document.getElementById('pin-input');inp.value='';document.getElementById('pin-error').textContent='';
+  setTimeout(()=>inp.focus(),100);
+}
+function closePinModal(){document.getElementById('pin-overlay').style.display='none';}
+function checkPin(){
+  const v=document.getElementById('pin-input').value;
+  if(v===BUILDER_PIN){sessionStorage.setItem('vmm_auth','1');closePinModal();document.getElementById('bmodal').classList.add('open');}
+  else{document.getElementById('pin-error').textContent='Incorrect PIN. Try again.';document.getElementById('pin-input').value='';}
+}
+document.addEventListener('keydown',e=>{if(e.key==='Enter'&&document.getElementById('pin-overlay').style.display==='flex')checkPin();});
 function closeBuilder(){document.getElementById('bmodal').classList.remove('open');}
 function switchTab(t){
   document.getElementById('bpanel-kpi').style.display=t==='kpi'?'':'none';
