@@ -148,7 +148,7 @@ body{font-family:"Outfit",sans-serif;background:var(--bg);color:var(--text);min-
 .sw-close:hover{background:rgba(26,108,196,0.08)}
 .sw-title{font-size:9px;font-weight:700;color:#4a7aaa;text-transform:uppercase;
   letter-spacing:0.8px;margin-bottom:8px;font-family:"Outfit",sans-serif}
-.sw-main{display:flex;align-items:flex-end;gap:10px;margin-bottom:8px}
+.sw-main{display:flex;align-items:flex-end;gap:4px;margin-bottom:4px}
 .sw-num{font-size:28px;font-weight:800;color:#0d2b4e;line-height:1;font-family:"Outfit",sans-serif;letter-spacing:-0.5px}
 .sw-badge{font-size:9.5px;font-weight:700;padding:2px 7px;border-radius:8px;margin-bottom:4px}
 .sw-badge.up{background:rgba(22,163,74,0.1);color:#16a34a}
@@ -858,24 +858,52 @@ function render(){
 }
 
 // STORE WIDGET
+// Store count overrides (PIN-gated edits)
+const SC_OVERRIDES={};
 function renderStoreWidget(sM){
   if(!RAW.length)return;
   const ALL_MONTHS=[...new Set(RAW.map(d=>d.lmy).filter(Boolean))].sort((a,b)=>m2n(a)-m2n(b));
   const monthStores={};
   RAW.forEach(d=>{if(!d.lmy||!d.store)return;if(!monthStores[d.lmy])monthStores[d.lmy]=new Set();monthStores[d.lmy].add(d.store);});
-  const SC={};ALL_MONTHS.forEach(m=>SC[m]=monthStores[m]?monthStores[m].size:0);
-  const activeM=(sM&&SC[sM])?sM:ALL_MONTHS[ALL_MONTHS.length-1];
-  const cur=SC[activeM]||0,idx=ALL_MONTHS.indexOf(activeM),prev=idx>0?SC[ALL_MONTHS[idx-1]]:null;
+  const SC={};ALL_MONTHS.forEach(m=>SC[m]=SC_OVERRIDES[m]!==undefined?SC_OVERRIDES[m]:(monthStores[m]?monthStores[m].size:0));
+  const activeM=(sM&&SC[sM]!==undefined)?sM:ALL_MONTHS[ALL_MONTHS.length-1];
+  const cur=SC[activeM]||0,aidx=ALL_MONTHS.indexOf(activeM),prev=aidx>0?SC[ALL_MONTHS[aidx-1]]:null;
+  // Current month count
   document.getElementById("sw-num").textContent=cur.toLocaleString();
-  document.getElementById("sw-month-lbl").textContent=activeM+" — Active stores";
+  document.getElementById("sw-month-lbl").textContent=activeM+' — Active Stores';
   const badge=document.getElementById("sw-badge");
-  if(prev!==null){const diff=cur-prev;badge.textContent=(diff>=0?"▲ ":"▼ ")+Math.abs(diff)+" vs prev";badge.className="sw-badge "+(diff>=0?"up":"dn");}
-  else{badge.textContent="All time";badge.className="sw-badge fl";}
-  const vals=ALL_MONTHS.map(m=>SC[m]),minV=Math.min(...vals),maxV=Math.max(...vals);
-  document.getElementById("sw-spark").innerHTML=ALL_MONTHS.map(m=>{
-    const h=maxV===minV?100:Math.max(12,Math.round((SC[m]-minV)/(maxV-minV)*100));
-    return '<span class="'+(m===activeM?"sw-active":"")+'" style="height:'+h+'%" data-tip="'+m+': '+SC[m]+'"></span>';
-  }).join("");
+  if(prev!==null){const diff=cur-prev;badge.textContent=(diff>0?'▲ ':'▼ ')+Math.abs(diff)+' vs '+ALL_MONTHS[aidx-1];badge.className='sw-badge '+(diff>=0?'up':'dn');}
+  else{badge.textContent='First month';badge.className='sw-badge fl';}
+  // Trend table (rendered into sw-trend-wrap but kept hidden)
+  const trendWrap=document.getElementById('sw-trend-wrap');
+  if(trendWrap){
+    trendWrap.innerHTML='<table style="width:100%;border-collapse:collapse;margin-top:8px;font-size:10px;font-family:Outfit,sans-serif">'
+      +'<thead><tr><th style="text-align:left;color:#4a7aaa;font-weight:700;padding:4px 6px;border-bottom:1.5px solid rgba(26,108,196,0.12);font-size:9px;text-transform:uppercase">Month &amp; Year</th>'
+      +'<th style="text-align:right;color:#4a7aaa;font-weight:700;padding:4px 6px;border-bottom:1.5px solid rgba(26,108,196,0.12);font-size:9px;text-transform:uppercase">No. of Stores</th></tr></thead>'
+      +'<tbody>'+ALL_MONTHS.map(m=>'<tr style="background:'+(m===activeM?'rgba(26,108,196,0.06)':'')+'"><td style="padding:4px 6px;color:'+(m===activeM?'#1a6cc4':'#0d2b4e')+';font-weight:'+(m===activeM?'700':'400')+'">'+m+'</td><td style="text-align:right;padding:4px 6px;color:'+(m===activeM?'#1a6cc4':'#0d2b4e')+';font-weight:'+(m===activeM?'700':'400')+'">'+SC[m].toLocaleString()+'</td></tr>').join('')
+      +'</tbody></table>';
+  }
+}
+function toggleStoreTrend(){
+  const w=document.getElementById('sw-trend-wrap');
+  const btn=document.getElementById('sw-trend-btn');
+  if(!w||!btn)return;
+  const open=w.style.display!=='none';
+  w.style.display=open?'none':'';
+  btn.textContent=open?'📈 See Trend ▾':'📈 Hide Trend ▴';
+}
+function editStoreCount(){
+  requirePin(function(){
+    const sM=document.getElementById('f-month').value||'';
+    if(!sM){alert('Please select a month first');return;}
+    const cur=document.getElementById('sw-num').textContent.replace(/,/g,'');
+    const val=window.prompt('Override store count for '+sM+':\n(current: '+cur+')',cur);
+    if(val===null)return;
+    const n=parseInt(val,10);
+    if(isNaN(n)||n<0){alert('Invalid number');return;}
+    SC_OVERRIDES[sM]=n;
+    renderStoreWidget(sM);
+  });
 }
 
 // DOWNLOAD
@@ -897,24 +925,23 @@ function downloadCSV(){
   a.click();URL.revokeObjectURL(url);
 }
 
-// BUILDER
+// BUILDER — PIN always required (no session caching)
 const BUILDER_PIN='4r5t6y';
 let _pinCallback=null;
 function requirePin(cb){
-  if(sessionStorage.getItem('vmm_auth')==='1'){cb();return;}
   _pinCallback=cb;
   const ov=document.getElementById('pin-overlay');ov.style.display='flex';
   const inp=document.getElementById('pin-input');inp.value='';document.getElementById('pin-error').textContent='';
   setTimeout(()=>inp.focus(),100);
 }
-function openBuilder(){requirePin(()=>{document.getElementById('bmodal').classList.add('open');initBuilderSeries();});}
+function openBuilder(){requirePin(function(){document.getElementById('bmodal').classList.add('open');initBuilderSeries();});}
 function closePinModal(){document.getElementById('pin-overlay').style.display='none';_pinCallback=null;}
 function checkPin(){
   const v=document.getElementById('pin-input').value;
   if(v===BUILDER_PIN){
-    sessionStorage.setItem('vmm_auth','1');closePinModal();
+    closePinModal();
     if(_pinCallback){const cb=_pinCallback;_pinCallback=null;cb();}
-    else{document.getElementById('bmodal').classList.add('open');}
+    else{document.getElementById('bmodal').classList.add('open');initBuilderSeries();}
   }else{document.getElementById('pin-error').textContent='Incorrect PIN. Try again.';document.getElementById('pin-input').value='';}
 }
 document.addEventListener('keydown',e=>{if(e.key==='Enter'&&document.getElementById('pin-overlay').style.display==='flex')checkPin();});
@@ -1223,10 +1250,12 @@ loadData();
   <div class="sw-title">🏪 Active Stores</div>
   <div class="sw-main">
     <div class="sw-num" id="sw-num">—</div>
-    <div class="sw-badge fl" id="sw-badge">—</div>
+    <button onclick="editStoreCount()" title="Override count" style="background:none;border:none;cursor:pointer;font-size:11px;color:#4a7aaa;padding:0 0 4px 5px;line-height:1" >✏️</button>
   </div>
-  <div class="sw-lbl" id="sw-month-lbl">Network store count</div>
-  <div class="sw-spark" id="sw-spark"></div>
+  <div class="sw-lbl" id="sw-month-lbl">— Active Stores</div>
+  <div class="sw-badge fl" id="sw-badge">—</div>
+  <button id="sw-trend-btn" onclick="toggleStoreTrend()" style="margin-top:8px;border:1px solid rgba(26,108,196,0.2);background:rgba(26,108,196,0.05);color:#4a7aaa;border-radius:6px;padding:4px 10px;font-size:9.5px;font-family:Outfit,sans-serif;font-weight:700;cursor:pointer;width:100%">📈 See Trend ▾</button>
+  <div id="sw-trend-wrap" style="display:none;max-height:220px;overflow-y:auto"></div>
 </div>
 
 </body>
