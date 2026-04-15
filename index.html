@@ -53,6 +53,16 @@ body{font-family:"Outfit",sans-serif;background:var(--bg);color:var(--text);min-
   background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='9' height='9' viewBox='0 0 12 12'%3E%3Cpath fill='%234a7aaa' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
   background-repeat:no-repeat;background-position:right 7px center;transition:border-color .2s}
 .fg select:focus{border-color:var(--sky)}
+/* Searchable dropdown */
+.ss-wrap{position:relative;width:100%}
+.ss-btn{background:#edf5fd;border:1px solid rgba(26,108,196,0.18);border-radius:6px;padding:6px 9px;font-size:11.5px;font-family:"Outfit",sans-serif;color:var(--text);cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:6px;transition:border-color .2s;user-select:none}
+.ss-btn:hover{border-color:var(--sky)}
+.ss-pop{position:absolute;top:calc(100% + 3px);left:0;right:0;background:#fff;border:1.5px solid rgba(26,108,196,0.2);border-radius:9px;box-shadow:0 8px 24px rgba(26,108,196,0.13);z-index:600;overflow:hidden;min-width:180px}
+.ss-inp{width:100%;box-sizing:border-box;padding:7px 10px;border:none;border-bottom:1px solid rgba(26,108,196,0.1);font-family:"Outfit",sans-serif;font-size:11.5px;color:var(--text);outline:none;background:#f4f9ff}
+.ss-opts{max-height:190px;overflow-y:auto}
+.ss-opt{padding:6px 10px;font-size:11.5px;color:var(--text);cursor:pointer;font-family:"Outfit",sans-serif}
+.ss-opt:hover{background:rgba(26,108,196,0.07);color:var(--sky)}
+.ss-opt.ss-sel{font-weight:700;color:var(--sky)}
 .fg select option{background:#edf5fd}
 
 /* KPIs — 5 cards */
@@ -223,8 +233,26 @@ body{font-family:"Outfit",sans-serif;background:var(--bg);color:var(--text);min-
 <div class="filters">
   <div class="fg"><label>📅 Month &amp; Year</label><select id="f-month"></select></div>
   <div class="fg"><label>🗺️ Zone</label><select id="f-zone"></select></div>
-  <div class="fg"><label>🏭 Vendor</label><select id="f-vendor"></select></div>
-  <div class="fg"><label>🏪 Store</label><select id="f-store"></select></div>
+  <div class="fg"><label>🏪 Store</label>
+    <div class="ss-wrap" id="ssw-store">
+      <div class="ss-btn" id="ssb-store"><span id="ssv-store">All Stores</span><span>▾</span></div>
+      <div class="ss-pop" id="ssp-store" style="display:none">
+        <input class="ss-inp" id="ssi-store" placeholder="Search stores…" type="text">
+        <div class="ss-opts" id="sso-store"></div>
+      </div>
+    </div>
+    <input type="hidden" id="f-store" value="">
+  </div>
+  <div class="fg"><label>🏭 Vendor</label>
+    <div class="ss-wrap" id="ssw-vendor">
+      <div class="ss-btn" id="ssb-vendor"><span id="ssv-vendor">All Vendors</span><span>▾</span></div>
+      <div class="ss-pop" id="ssp-vendor" style="display:none">
+        <input class="ss-inp" id="ssi-vendor" placeholder="Search vendors…" type="text">
+        <div class="ss-opts" id="sso-vendor"></div>
+      </div>
+    </div>
+    <input type="hidden" id="f-vendor" value="">
+  </div>
   <div class="fg"><label>🏷️ Critical Product</label><select id="f-cp"></select></div>
   <div class="fg" style="min-width:auto;flex:0;justify-content:flex-end"><label style="opacity:0">.</label><button class="help-btn" onclick="openBuilder()" style="white-space:nowrap;padding:7px 14px;font-size:11px">➕ Add Analytics</button></div>
 </div>
@@ -489,6 +517,7 @@ const MMAP = {Jan:0,Feb:1,Mar:2,Apr:3,May:4,Jun:5,Jul:6,Aug:7,Sep:8,Oct:9,Nov:10
 let RAW = [];
 let customKPIs = [], customCharts = [];
 let selectedKPIColor = '#1a6cc4';
+let storeSearch, vendorSearch;
 
 // UTILS
 function m2n(m){if(!m)return -1;const p=m.split("'");return p.length<2?-1:(2000+parseInt(p[1]))*12+(MMAP[p[0]]||0);}
@@ -534,7 +563,7 @@ function transformRow(row){
 }
 
 // LOAD — with localStorage cache (4-hour TTL) for instant repeat visits
-const LS_KEY='vmm_data_v9'; // bump version to bust old cache
+const LS_KEY='vmm_data_v10'; // bump version to bust old cache
 const LS_TTL=4*60*60*1000; // 4 hours in ms
 
 function applyData(jsonData){
@@ -598,7 +627,57 @@ function showError(msg){
   el.style.display='flex';
 }
 
+// SEARCHABLE SELECT
+function makeSearchSel(wrpId,btnId,popId,inpId,optsId,hidId,valSpanId,placeholder){
+  const btn=document.getElementById(btnId),pop=document.getElementById(popId),
+        inp=document.getElementById(inpId),opts=document.getElementById(optsId),
+        hid=document.getElementById(hidId),valSpan=document.getElementById(valSpanId);
+  let allOpts=[],selVal='';
+  function open(){pop.style.display='block';inp.value='';inp.focus();renderOpts('');document.addEventListener('mousedown',outside);}
+  function close(){pop.style.display='none';document.removeEventListener('mousedown',outside);}
+  function outside(e){if(!document.getElementById(wrpId).contains(e.target))close();}
+  function renderOpts(q){
+    const f=q?allOpts.filter(o=>o.toLowerCase().includes(q.toLowerCase())):allOpts;
+    opts.innerHTML='<div class="ss-opt'+(selVal===''?' ss-sel':'')+'" data-val="">'+placeholder+'</div>'+
+      f.filter(o=>o!=='').map(o=>'<div class="ss-opt'+(o===selVal?' ss-sel':'')+'" data-val="'+o+'">'+o+'</div>').join('');
+    opts.querySelectorAll('.ss-opt').forEach(el=>el.addEventListener('mousedown',e=>{
+      e.preventDefault();selVal=el.dataset.val;
+      valSpan.textContent=selVal||placeholder;hid.value=selVal;close();
+      hid.dispatchEvent(new Event('change'));
+    }));
+  }
+  btn.addEventListener('click',e=>{e.stopPropagation();pop.style.display==='none'?open():close();});
+  inp.addEventListener('input',()=>renderOpts(inp.value));
+  inp.addEventListener('click',e=>e.stopPropagation());
+  return{
+    setOpts(vals){
+      allOpts=['', ...vals];
+      if(!allOpts.includes(selVal)){selVal='';valSpan.textContent=placeholder;hid.value='';}
+      if(pop.style.display!=='none')renderOpts(inp.value);
+    },
+    reset(){selVal='';valSpan.textContent=placeholder;hid.value='';},
+    getValue(){return selVal;}
+  };
+}
+
 // FILTERS
+function onFilterChange(){render();renderCustomKPIs();renderCustomCharts();renderStoreWidget(document.getElementById('f-month').value);}
+
+function updateStoreList(){
+  const zone=document.getElementById('f-zone').value;
+  const base=zone?RAW.filter(d=>d.zone===zone):RAW;
+  storeSearch.setOpts([...new Set(base.map(d=>d.store).filter(Boolean))].sort());
+  updateVendorList();
+}
+function updateVendorList(){
+  const zone=document.getElementById('f-zone').value;
+  const store=document.getElementById('f-store').value;
+  let base=RAW;
+  if(zone)base=base.filter(d=>d.zone===zone);
+  if(store)base=base.filter(d=>d.store===store);
+  vendorSearch.setOpts([...new Set(base.map(d=>d.vendor).filter(Boolean))].sort());
+}
+
 function initFilters(){
   const ALL_MONTHS=[...new Set(RAW.map(d=>d.lmy).filter(Boolean))].sort((a,b)=>m2n(a)-m2n(b));
   const mSel=document.getElementById('f-month');
@@ -606,14 +685,14 @@ function initFilters(){
   ALL_MONTHS.forEach(m=>mSel.innerHTML+='<option value="'+m+'">'+m+'</option>');
   mSel.value=ALL_MONTHS[ALL_MONTHS.length-1]||'';
   fillSel('f-zone',[...new Set(RAW.map(d=>d.zone).filter(Boolean))].sort(),'Zones');
-  fillSel('f-vendor',[...new Set(RAW.map(d=>d.vendor).filter(Boolean))].sort(),'Vendors');
-  fillSel('f-store',[...new Set(RAW.map(d=>d.store).filter(Boolean))].sort(),'Stores');
   fillSel('f-cp',['Critical Product','Others'],'Category');
-  ['f-month','f-zone','f-vendor','f-store','f-cp'].forEach(id=>
-    document.getElementById(id).addEventListener('change',()=>{
-      render();renderCustomKPIs();renderCustomCharts();
-      renderStoreWidget(document.getElementById('f-month').value);
-    }));
+  storeSearch=makeSearchSel('ssw-store','ssb-store','ssp-store','ssi-store','sso-store','f-store','ssv-store','All Stores');
+  vendorSearch=makeSearchSel('ssw-vendor','ssb-vendor','ssp-vendor','ssi-vendor','sso-vendor','f-vendor','ssv-vendor','All Vendors');
+  updateStoreList();
+  ['f-month','f-cp'].forEach(id=>document.getElementById(id).addEventListener('change',onFilterChange));
+  document.getElementById('f-zone').addEventListener('change',()=>{storeSearch.reset();vendorSearch.reset();updateStoreList();onFilterChange();});
+  document.getElementById('f-store').addEventListener('change',()=>{vendorSearch.reset();updateVendorList();onFilterChange();});
+  document.getElementById('f-vendor').addEventListener('change',onFilterChange);
 }
 function fillSel(id,vals,lbl){
   const el=document.getElementById(id);
