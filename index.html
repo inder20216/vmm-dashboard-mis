@@ -529,8 +529,8 @@ function parseDate(v){
   // M/D/YYYY — n8n returns Google Sheets dates in US format with slashes
   m=s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
   if(m)d=new Date(+m[3],+m[1]-1,+m[2]); // month/day/year
-  // DD-MM-YYYY — Apps Script format with dashes
-  if(!d){m=s.match(/^(\d{1,2})-(\d{1,2})-(\d{4})$/);if(m)d=new Date(+m[3],+m[2]-1,+m[1]);}
+  // DD-MM-YYYY or DD-MM-YYYY HH:MM:SS — dashes format (ignore time part)
+  if(!d){m=s.match(/^(\d{1,2})-(\d{1,2})-(\d{4})/);if(m)d=new Date(+m[3],+m[2]-1,+m[1]);}
   // YYYY-MM-DD
   if(!d){m=s.match(/^(\d{4})-(\d{2})-(\d{2})/);if(m)d=new Date(+m[1],+m[2]-1,+m[3]);}
   // Google Sheets serial number fallback
@@ -547,7 +547,7 @@ function parseDate(v){
 // TRANSFORM
 function transformRow(row){
   const ld=parseDate(row['Complaint Date']);if(!ld)return null;
-  const cd=parseDate(row['Closer Date']);
+  const cd=parseDate(row['Date of Closure']);
   const pn=String(row['Product Name']||'').trim();
   const otat=parseFloat(row['Over Due TAT'])||0;
   return{ld,lmy:fmtMY(ld),cd,cmy:cd?fmtMY(cd):null,
@@ -563,7 +563,7 @@ function transformRow(row){
 }
 
 // LOAD — with localStorage cache (4-hour TTL) for instant repeat visits
-const LS_KEY='vmm_data_v10'; // bump version to bust old cache
+const LS_KEY='vmm_data_v11'; // bump version to bust old cache
 const LS_TTL=4*60*60*1000; // 4 hours in ms
 
 function applyData(jsonData){
@@ -784,8 +784,8 @@ function render(){
   const kOp=sM?base.filter(d=>d.fs!=="Closed"&&m2n(d.lmy)<=mn).length:base.filter(d=>d.fs!=="Closed").length;
   animNum("v-logged",kLg);animNum("v-closed",kCl);animNum("v-pending",kPe);animNum("v-old",kOc);animNum("v-overall",kOp);
   const allPend=sM?base.filter(d=>d.fs!=="Closed"&&m2n(d.lmy)<=mn):base.filter(d=>d.fs!=="Closed");
-  animNum("v-overall-gt30",allPend.filter(d=>d.aging>30).length);
-  animNum("v-overall-lt30",allPend.filter(d=>d.aging<=30).length);
+  animNum("v-overall-gt30",allPend.filter(d=>d.aging>=31).length);
+  animNum("v-overall-lt30",allPend.filter(d=>d.aging<31).length);
 
   // Badges
   if(sM){
@@ -959,7 +959,7 @@ function renderCustomKPIs(){
   customKPIs.forEach(function(cfg){
     const recs=applyKPIFilter(base,cfg.filter);
     const val=cfg.metric==='overdue_gt30'
-      ?(sM?base.filter(d=>d.fs!=="Closed"&&m2n(d.lmy)<=mn):base.filter(d=>d.fs!=="Closed")).filter(d=>d.aging>30).length
+      ?(sM?base.filter(d=>d.fs!=="Closed"&&m2n(d.lmy)<=mn):base.filter(d=>d.fs!=="Closed")).filter(d=>d.aging>=31).length
       :computeMetric(recs,cfg.metric,sM);
     const div=document.createElement('div');
     div.id=cfg.id;div.className='custom-kpi-card';
