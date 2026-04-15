@@ -143,9 +143,11 @@ body{font-family:"Outfit",sans-serif;background:var(--bg);color:var(--text);min-
 }
 @keyframes floatIn{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
 #store-widget.hidden{display:none}
-.sw-close{position:absolute;top:8px;right:10px;background:none;border:none;
-  font-size:13px;color:#4a7aaa;cursor:pointer;line-height:1;padding:2px 4px;border-radius:4px}
-.sw-close:hover{background:rgba(26,108,196,0.08)}
+.sw-controls{position:absolute;top:8px;right:8px;display:flex;gap:3px}
+.sw-ctrl{background:none;border:none;font-size:12px;color:#4a7aaa;cursor:pointer;line-height:1;padding:2px 5px;border-radius:4px}
+.sw-ctrl:hover{background:rgba(26,108,196,0.08)}
+#store-widget.minimised .sw-body{display:none}
+#store-widget.minimised{min-width:0}
 .sw-title{font-size:9px;font-weight:700;color:#4a7aaa;text-transform:uppercase;
   letter-spacing:0.8px;margin-bottom:8px;font-family:"Outfit",sans-serif}
 .sw-main{display:flex;align-items:flex-end;gap:4px;margin-bottom:4px}
@@ -878,12 +880,7 @@ function renderStoreWidget(sM){
   document.getElementById('sw-month-lbl').textContent=curM+' — Active Stores';
   // Render table
   const tbl=document.getElementById('sw-table-wrap');if(!tbl)return;
-  tbl.innerHTML='<table style="width:100%;border-collapse:collapse;margin-top:6px;font-size:10.5px;font-family:Outfit,sans-serif">'
-    +'<thead><tr>'
-    +'<th style="text-align:left;color:#4a7aaa;font-weight:700;padding:5px 6px;border-bottom:1.5px solid rgba(26,108,196,0.15);font-size:9px;text-transform:uppercase;letter-spacing:.6px">Logged Case Month&amp;Year</th>'
-    +'<th style="text-align:right;color:#4a7aaa;font-weight:700;padding:5px 6px;border-bottom:1.5px solid rgba(26,108,196,0.15);font-size:9px;text-transform:uppercase;letter-spacing:.6px">No. of Stores</th>'
-    +'<th style="width:22px;border-bottom:1.5px solid rgba(26,108,196,0.15)"></th>'
-    +'</tr></thead><tbody>'
+  tbl.innerHTML='<table style="width:100%;border-collapse:collapse;margin-top:6px;font-size:10.5px;font-family:Outfit,sans-serif"><tbody>'
     +storeCounts.map(function(e,i){
       const active=e.m===curM;
       const bg=active?'rgba(255,160,60,0.13)':i%2===0?'rgba(255,140,40,0.04)':'';
@@ -1261,14 +1258,19 @@ loadData();
 
 <!-- FLOATING STORE WIDGET -->
 <div id="store-widget">
-  <button class="sw-close" onclick="document.getElementById('store-widget').classList.add('hidden')" title="Close">✕</button>
-  <div class="sw-title">🏪 Active Stores</div>
-  <div class="sw-main">
-    <div class="sw-num" id="sw-num">—</div>
+  <div class="sw-controls">
+    <button class="sw-ctrl" title="Minimise" onclick="document.getElementById('store-widget').classList.toggle('minimised');this.textContent=document.getElementById('store-widget').classList.contains('minimised')?'▲':'▼'">▼</button>
+    <button class="sw-ctrl" title="Close" onclick="document.getElementById('store-widget').classList.add('hidden')">✕</button>
   </div>
-  <div class="sw-lbl" id="sw-month-lbl">— Active Stores</div>
-  <div id="sw-table-wrap" style="max-height:240px;overflow-y:auto;margin-top:2px"></div>
-  <button onclick="addStoreMonth()" style="margin-top:8px;width:100%;border:1.5px dashed rgba(26,108,196,0.35);background:rgba(26,108,196,0.04);color:#1a6cc4;border-radius:6px;padding:5px;font-size:10px;font-family:Outfit,sans-serif;font-weight:700;cursor:pointer">+ Add Month</button>
+  <div class="sw-title">🏪 Active Stores</div>
+  <div class="sw-body">
+    <div class="sw-main">
+      <div class="sw-num" id="sw-num">—</div>
+    </div>
+    <div class="sw-lbl" id="sw-month-lbl">— Active Stores</div>
+    <div id="sw-table-wrap" style="max-height:240px;overflow-y:auto;margin-top:2px"></div>
+    <button onclick="addStoreMonth()" style="margin-top:8px;width:100%;border:1.5px dashed rgba(26,108,196,0.35);background:rgba(26,108,196,0.04);color:#1a6cc4;border-radius:6px;padding:5px;font-size:10px;font-family:Outfit,sans-serif;font-weight:700;cursor:pointer">+ Add Month</button>
+  </div>
 </div>
 
 </body>
