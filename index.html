@@ -534,7 +534,7 @@ function transformRow(row){
 }
 
 // LOAD — with localStorage cache (4-hour TTL) for instant repeat visits
-const LS_KEY='vmm_data_v7'; // bump version to bust old cache
+const LS_KEY='vmm_data_v8'; // bump version to bust old cache
 const LS_TTL=4*60*60*1000; // 4 hours in ms
 
 function applyData(jsonData){
@@ -656,13 +656,13 @@ function mkLine(id,labels,datasets){
 
 // CALC
 function calc(recs,sM){
-  if(!sM){const lg=recs.length,cl=recs.filter(d=>d.fs==="Closed").length,pe=recs.filter(d=>d.fs==="Pending").length;return[lg,cl,pe,0,pe];}
+  if(!sM){const lg=recs.length,cl=recs.filter(d=>d.fs==="Closed").length,pe=recs.filter(d=>d.fs!=="Closed").length;return[lg,cl,pe,0,pe];}
   const mn=m2n(sM);
   const lg=recs.filter(d=>d.lmy===sM).length;
   const cl=recs.filter(d=>d.cmy===sM&&d.lmy===sM&&d.fs==="Closed").length;
   const pe=lg-cl;
   const oc=recs.filter(d=>d.cmy===sM&&m2n(d.lmy)<mn&&d.fs==="Closed").length;
-  const op=recs.filter(d=>d.fs==="Pending"&&m2n(d.lmy)<=mn).length;
+  const op=recs.filter(d=>d.fs!=="Closed"&&m2n(d.lmy)<=mn).length;
   return[lg,cl,pe,oc,op];
 }
 function setBadge(id,curr,prev){
@@ -700,11 +700,11 @@ function render(){
   // KPIs
   const kLg=sM?base.filter(d=>d.lmy===sM).length:base.length;
   const kCl=sM?base.filter(d=>d.cmy===sM&&d.lmy===sM&&d.fs==="Closed").length:base.filter(d=>d.fs==="Closed"&&d.lmy===d.cmy).length;
-  const kPe=sM?kLg-kCl:base.filter(d=>d.fs==="Pending").length;
+  const kPe=sM?kLg-kCl:base.filter(d=>d.fs!=="Closed").length;
   const kOc=sM?base.filter(d=>d.cmy===sM&&m2n(d.lmy)<mn&&d.fs==="Closed").length:base.filter(d=>d.fs==="Closed"&&d.lmy!==d.cmy).length;
-  const kOp=sM?base.filter(d=>d.fs==="Pending"&&m2n(d.lmy)<=mn).length:base.filter(d=>d.fs==="Pending").length;
+  const kOp=sM?base.filter(d=>d.fs!=="Closed"&&m2n(d.lmy)<=mn).length:base.filter(d=>d.fs!=="Closed").length;
   animNum("v-logged",kLg);animNum("v-closed",kCl);animNum("v-pending",kPe);animNum("v-old",kOc);animNum("v-overall",kOp);
-  const allPend=sM?base.filter(d=>d.fs==="Pending"&&m2n(d.lmy)<=mn):base.filter(d=>d.fs==="Pending");
+  const allPend=sM?base.filter(d=>d.fs!=="Closed"&&m2n(d.lmy)<=mn):base.filter(d=>d.fs!=="Closed");
   animNum("v-overall-gt30",allPend.filter(d=>d.aging>30).length);
   animNum("v-overall-lt30",allPend.filter(d=>d.aging<=30).length);
 
@@ -756,7 +756,7 @@ function render(){
 
   // Delay reason
   const drMap={};
-  base.filter(d=>d.fs==="Pending"&&(!sM||d.lmy===sM)).forEach(d=>{
+  base.filter(d=>d.fs!=="Closed"&&(!sM||d.lmy===sM)).forEach(d=>{
     const r=d.dr||"Unspecified";if(!r||r==="Unspecified")return;
     if(!drMap[r])drMap[r]={count:0,n:0,total:0};
     drMap[r].count++;const a=parseFloat(d.aging);if(!isNaN(a)&&a>0){drMap[r].n++;drMap[r].total+=a;}
@@ -841,7 +841,7 @@ function computeMetric(recs,metric,sM){
     case'count':return recs.length;
     case'logged':return sM?recs.filter(d=>d.lmy===sM).length:recs.length;
     case'closed':return sM?recs.filter(d=>d.cmy===sM&&d.lmy===sM&&d.fs==="Closed").length:recs.filter(d=>d.fs==="Closed").length;
-    case'pending':return sM?recs.filter(d=>d.fs==="Pending"&&m2n(d.lmy)<=mn).length:recs.filter(d=>d.fs==="Pending").length;
+    case'pending':return sM?recs.filter(d=>d.fs!=="Closed"&&m2n(d.lmy)<=mn).length:recs.filter(d=>d.fs!=="Closed").length;
     case'beyond_tat':return recs.filter(d=>d.tat==="Beyond TAT").length;
     case'within_tat':return recs.filter(d=>d.tat==="Within TAT").length;
     case'avg_aging':return recs.length?+(recs.reduce((s,d)=>s+d.aging,0)/recs.length).toFixed(1):0;
@@ -880,7 +880,7 @@ function renderCustomKPIs(){
   customKPIs.forEach(function(cfg){
     const recs=applyKPIFilter(base,cfg.filter);
     const val=cfg.metric==='overdue_gt30'
-      ?(sM?base.filter(d=>d.fs==="Pending"&&m2n(d.lmy)<=mn):base.filter(d=>d.fs==="Pending")).filter(d=>d.aging>30).length
+      ?(sM?base.filter(d=>d.fs!=="Closed"&&m2n(d.lmy)<=mn):base.filter(d=>d.fs!=="Closed")).filter(d=>d.aging>30).length
       :computeMetric(recs,cfg.metric,sM);
     const div=document.createElement('div');
     div.id=cfg.id;div.className='custom-kpi-card';
