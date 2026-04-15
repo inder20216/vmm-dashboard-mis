@@ -563,7 +563,7 @@ function transformRow(row){
 }
 
 // LOAD — with localStorage cache (4-hour TTL) for instant repeat visits
-const LS_KEY='vmm_data_v11'; // bump version to bust old cache
+const LS_KEY='vmm_data_v12'; // bump version to bust old cache
 const LS_TTL=4*60*60*1000; // 4 hours in ms
 
 function applyData(jsonData){
@@ -781,11 +781,15 @@ function render(){
   const kCl=sM?base.filter(d=>d.cmy===sM&&d.lmy===sM&&d.fs==="Closed").length:base.filter(d=>d.fs==="Closed"&&d.lmy===d.cmy).length;
   const kPe=sM?kLg-kCl:base.filter(d=>d.fs!=="Closed").length;
   const kOc=sM?base.filter(d=>d.cmy===sM&&m2n(d.lmy)<mn&&d.fs==="Closed").length:base.filter(d=>d.fs==="Closed"&&d.lmy!==d.cmy).length;
-  const kOp=sM?base.filter(d=>d.fs!=="Closed"&&m2n(d.lmy)<=mn).length:base.filter(d=>d.fs!=="Closed").length;
+  // Overall Pending: logged <= selected month AND (no close date OR close date > selected month)
+  const isPend=d=>m2n(d.lmy)<=mn&&(!d.cmy||m2n(d.cmy)>mn);
+  const isPendAll=d=>!d.cmy;
+  const allPend=sM?base.filter(isPend):base.filter(isPendAll);
+  const kOp=allPend.length;
   animNum("v-logged",kLg);animNum("v-closed",kCl);animNum("v-pending",kPe);animNum("v-old",kOc);animNum("v-overall",kOp);
-  const allPend=sM?base.filter(d=>d.fs!=="Closed"&&m2n(d.lmy)<=mn):base.filter(d=>d.fs!=="Closed");
-  animNum("v-overall-gt30",allPend.filter(d=>d.aging>=31).length);
-  animNum("v-overall-lt30",allPend.filter(d=>d.aging<31).length);
+  // >30d and <30d based on Over Due TAT column (not Aging)
+  animNum("v-overall-gt30",allPend.filter(d=>d.otat>=31).length);
+  animNum("v-overall-lt30",allPend.filter(d=>d.otat<31).length);
 
   // Badges
   if(sM){
