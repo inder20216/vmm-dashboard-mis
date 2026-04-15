@@ -493,7 +493,9 @@ body{font-family:"Outfit",sans-serif;background:var(--bg);color:var(--text);min-
         <option value="logged">Count Logged</option>
         <option value="closed">Count Closed</option>
         <option value="pending">Count Pending</option>
+        <option value="overdue_gt30">Pending &gt; 30 Days</option>
         <option value="beyond_tat">Count Beyond TAT</option>
+        <option value="within_tat">Count Within TAT</option>
         <option value="avg_aging">Avg Aging (days)</option>
         <option value="sum_aging">Sum Aging (days)</option>
       </select>
@@ -915,17 +917,23 @@ function downloadCSV(){
 
 // BUILDER
 const BUILDER_PIN='4r5t6y';
-function openBuilder(){
-  if(sessionStorage.getItem('vmm_auth')==='1'){document.getElementById('bmodal').classList.add('open');return;}
+let _pinCallback=null;
+function requirePin(cb){
+  if(sessionStorage.getItem('vmm_auth')==='1'){cb();return;}
+  _pinCallback=cb;
   const ov=document.getElementById('pin-overlay');ov.style.display='flex';
   const inp=document.getElementById('pin-input');inp.value='';document.getElementById('pin-error').textContent='';
   setTimeout(()=>inp.focus(),100);
 }
-function closePinModal(){document.getElementById('pin-overlay').style.display='none';}
+function openBuilder(){requirePin(()=>document.getElementById('bmodal').classList.add('open'));}
+function closePinModal(){document.getElementById('pin-overlay').style.display='none';_pinCallback=null;}
 function checkPin(){
   const v=document.getElementById('pin-input').value;
-  if(v===BUILDER_PIN){sessionStorage.setItem('vmm_auth','1');closePinModal();document.getElementById('bmodal').classList.add('open');}
-  else{document.getElementById('pin-error').textContent='Incorrect PIN. Try again.';document.getElementById('pin-input').value='';}
+  if(v===BUILDER_PIN){
+    sessionStorage.setItem('vmm_auth','1');closePinModal();
+    if(_pinCallback){const cb=_pinCallback;_pinCallback=null;cb();}
+    else{document.getElementById('bmodal').classList.add('open');}
+  }else{document.getElementById('pin-error').textContent='Incorrect PIN. Try again.';document.getElementById('pin-input').value='';}
 }
 document.addEventListener('keydown',e=>{if(e.key==='Enter'&&document.getElementById('pin-overlay').style.display==='flex')checkPin();});
 function closeBuilder(){document.getElementById('bmodal').classList.remove('open');}
@@ -956,7 +964,12 @@ function computeMetric(recs,metric,sM){
     case'count':return recs.length;
     case'logged':return sM?recs.filter(d=>d.lmy===sM).length:recs.length;
     case'closed':return sM?recs.filter(d=>d.cmy===sM&&d.lmy===sM&&d.fs==="Closed").length:recs.filter(d=>d.fs==="Closed").length;
-    case'pending':return sM?recs.filter(d=>d.fs!=="Closed"&&m2n(d.lmy)<=mn).length:recs.filter(d=>d.fs!=="Closed").length;
+    case'pending':return sM
+      ?recs.filter(d=>m2n(d.lmy)<=mn&&(!d.cmy||m2n(d.cmy)>mn)).length
+      :recs.filter(d=>!d.cmy).length;
+    case'overdue_gt30':return sM
+      ?recs.filter(d=>m2n(d.lmy)<=mn&&(!d.cmy||m2n(d.cmy)>mn)&&d.otat>=31).length
+      :recs.filter(d=>!d.cmy&&d.otat>=31).length;
     case'beyond_tat':return recs.filter(d=>d.tat==="Beyond TAT").length;
     case'within_tat':return recs.filter(d=>d.tat==="Within TAT").length;
     case'avg_aging':return recs.length?+(recs.reduce((s,d)=>s+d.aging,0)/recs.length).toFixed(1):0;
@@ -990,25 +1003,39 @@ function ensureCustomKPIRow(){
 }
 function renderCustomKPIs(){
   const row=document.getElementById('custom-kpi-row');if(!row)return;
-  const sM=document.getElementById('f-month').value,mn=m2n(sM),base=getBase();
+  const sM=document.getElementById('f-month').value,base=getBase();
   while(row.firstChild)row.removeChild(row.firstChild);
-  customKPIs.forEach(function(cfg){
+  customKPIs.forEach(function(cfg,idx){
     const recs=applyKPIFilter(base,cfg.filter);
-    const val=cfg.metric==='overdue_gt30'
-      ?(sM?base.filter(d=>d.fs!=="Closed"&&m2n(d.lmy)<=mn):base.filter(d=>d.fs!=="Closed")).filter(d=>d.aging>=31).length
-      :computeMetric(recs,cfg.metric,sM);
+    const val=computeMetric(recs,cfg.metric,sM);
     const div=document.createElement('div');
     div.id=cfg.id;div.className='custom-kpi-card';
     div.setAttribute('style','--ckc:'+cfg.color);
-    const btn=document.createElement('button');
-    btn.className='rm-btn';btn.textContent='\u2715';
-    btn.addEventListener('click',function(){removeKPI(cfg.id);});
+    // controls row
+    const ctrl=document.createElement('div');
+    ctrl.setAttribute('style','position:absolute;top:6px;right:6px;display:flex;gap:3px;');
+    function mkCtrlBtn(label,title,cb){
+      const b=document.createElement('button');
+      b.textContent=label;b.title=title;
+      b.setAttribute('style','border:none;background:rgba(26,108,196,0.1);color:#4a7aaa;border-radius:4px;cursor:pointer;font-size:9px;padding:2px 4px;font-family:Outfit,sans-serif;line-height:1');
+      b.addEventListener('click',function(e){e.stopPropagation();requirePin(cb);});
+      return b;
+    }
+    if(idx>0)ctrl.appendChild(mkCtrlBtn('◀','Move left',function(){moveKPI(cfg.id,-1);}));
+    if(idx<customKPIs.length-1)ctrl.appendChild(mkCtrlBtn('▶','Move right',function(){moveKPI(cfg.id,1);}));
+    ctrl.appendChild(mkCtrlBtn('✕','Remove',function(){removeKPI(cfg.id);}));
+    div.appendChild(ctrl);
     const valDiv=document.createElement('div');valDiv.className='kpi-val';
     valDiv.textContent=typeof val==='number'&&val%1!==0?val.toFixed(1):val.toLocaleString();
     const lblDiv=document.createElement('div');lblDiv.className='kpi-lbl';lblDiv.textContent=cfg.label;
-    div.appendChild(btn);div.appendChild(valDiv);div.appendChild(lblDiv);
+    div.appendChild(valDiv);div.appendChild(lblDiv);
     row.appendChild(div);
   });
+}
+function moveKPI(id,dir){
+  const i=customKPIs.findIndex(k=>k.id===id);if(i<0)return;
+  const j=i+dir;if(j<0||j>=customKPIs.length)return;
+  [customKPIs[i],customKPIs[j]]=[customKPIs[j],customKPIs[i]];renderCustomKPIs();
 }
 function removeKPI(id){customKPIs=customKPIs.filter(k=>k.id!==id);renderCustomKPIs();}
 
@@ -1026,7 +1053,7 @@ function getDimVal(d,dim){
   }
 }
 function getDimLabel(dim){return{zone:'Zone',store:'Store Name',vendor:'Vendor',fm:'FM Name',pn:'Product Name',cp:'Critical/Others',tat:'TAT Status',dr:'Delay Reason',fs:'Status',lmy:'Month',state:'State',region:'Store Region',complaint_type:'Complaint Type',nature:'Nature',product_type:'Product Type'}[dim]||dim;}
-function getMetricLabel(metric){return{count:'Count',logged:'Logged',closed:'Closed',pending:'Pending',beyond_tat:'Beyond TAT',avg_aging:'Avg Aging (d)',sum_aging:'Sum Aging (d)'}[metric]||metric;}
+function getMetricLabel(metric){return{count:'Count',logged:'Logged',closed:'Closed',pending:'Pending',overdue_gt30:'Pending >30d',beyond_tat:'Beyond TAT',within_tat:'Within TAT',avg_aging:'Avg Aging (d)',sum_aging:'Sum Aging (d)'}[metric]||metric;}
 
 function addCustomChart(){
   const title=document.getElementById('b-chart-title').value.trim();
@@ -1057,11 +1084,20 @@ function addCustomChartCard(cfg){
   const s=document.createElement('div');s.className='chart-sub';
   s.textContent=getMetricLabel(cfg.metric)+' by '+(cfg.type==='trend'?'Month':getDimLabel(cfg.groupby));
   tWrap.appendChild(t);tWrap.appendChild(s);
-  const rmBtn=document.createElement('button');
-  rmBtn.className='rm-btn';rmBtn.textContent='\u2715 Remove';
-  rmBtn.setAttribute('style','position:relative;top:auto;right:auto');
-  rmBtn.addEventListener('click',function(){removeChart(cfg.id);});
-  hdr.appendChild(tWrap);hdr.appendChild(rmBtn);card.appendChild(hdr);
+  // PIN-gated action buttons
+  const btnWrap=document.createElement('div');btnWrap.setAttribute('style','display:flex;gap:5px;align-items:center;flex-shrink:0');
+  function mkChartBtn(label,title,cb){
+    const b=document.createElement('button');
+    b.textContent=label;b.title=title;
+    b.setAttribute('style','border:none;background:rgba(26,108,196,0.1);color:#4a7aaa;border-radius:5px;cursor:pointer;font-size:9.5px;padding:3px 7px;font-family:Outfit,sans-serif;font-weight:600');
+    b.addEventListener('click',function(e){e.stopPropagation();requirePin(cb);});
+    return b;
+  }
+  const idx=customCharts.findIndex(c=>c.id===cfg.id);
+  if(idx>0)btnWrap.appendChild(mkChartBtn('▲','Move up',function(){moveChart(cfg.id,-1);}));
+  if(idx<customCharts.length-1)btnWrap.appendChild(mkChartBtn('▼','Move down',function(){moveChart(cfg.id,1);}));
+  btnWrap.appendChild(mkChartBtn('✕ Remove','Remove chart',function(){removeChart(cfg.id);}));
+  hdr.appendChild(tWrap);hdr.appendChild(btnWrap);card.appendChild(hdr);
   if(cfg.type==='table'){
     const d=document.createElement('div');d.id='tbl-'+cfg.canvasId;card.appendChild(d);
   }else{
@@ -1094,6 +1130,15 @@ function renderOneCustomChart(cfg){
     indexAxis:cfg.type==='hbar'?'y':'x',responsive:true,layout:{padding:{top:16}},
     plugins:{legend:{display:false},tooltip:TIP,datalabels:{color:"#0d2b4e",font:{family:"Outfit",size:8,weight:"700"},anchor:"end",align:"end",offset:1,formatter:v=>v>0?v.toLocaleString():""}},
     scales:{x:{...SB},y:{...SB,beginAtZero:true}}}});
+}
+function moveChart(id,dir){
+  const i=customCharts.findIndex(c=>c.id===id);if(i<0)return;
+  const j=i+dir;if(j<0||j>=customCharts.length)return;
+  [customCharts[i],customCharts[j]]=[customCharts[j],customCharts[i]];
+  // Re-render all chart cards in new order
+  const wrap=document.getElementById('custom-charts-wrap');if(!wrap)return;
+  while(wrap.firstChild)wrap.removeChild(wrap.firstChild);
+  customCharts.forEach(c=>addCustomChartCard(c));
 }
 function removeChart(id){customCharts=customCharts.filter(c=>c.id!==id);const el=document.getElementById(id);if(el)el.remove();}
 
