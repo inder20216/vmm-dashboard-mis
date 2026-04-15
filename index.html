@@ -546,6 +546,7 @@ function parseDate(v){
 
 // TRANSFORM
 function transformRow(row){
+  if(String(row['Store Code']||'').trim()==='OM99')return null;
   const ld=parseDate(row['Complaint Date']);if(!ld)return null;
   const cd=parseDate(row['Date of Closure']);
   const pn=String(row['Product Name']||'').trim();
@@ -563,7 +564,7 @@ function transformRow(row){
 }
 
 // LOAD — with localStorage cache (4-hour TTL) for instant repeat visits
-const LS_KEY='vmm_data_v12'; // bump version to bust old cache
+const LS_KEY='vmm_data_v13'; // bump version to bust old cache
 const LS_TTL=4*60*60*1000; // 4 hours in ms
 
 function applyData(jsonData){
