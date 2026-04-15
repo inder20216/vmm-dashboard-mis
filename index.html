@@ -681,10 +681,12 @@ function updateVendorList(){
 
 function initFilters(){
   const ALL_MONTHS=[...new Set(RAW.map(d=>d.lmy).filter(Boolean))].sort((a,b)=>m2n(a)-m2n(b));
+  const JAN26=m2n("Jan'26");
+  const FILTERED_MONTHS=ALL_MONTHS.filter(m=>m2n(m)>=JAN26);
   const mSel=document.getElementById('f-month');
   mSel.innerHTML="<option value=''>All Months</option>";
-  ALL_MONTHS.forEach(m=>mSel.innerHTML+='<option value="'+m+'">'+m+'</option>');
-  mSel.value=ALL_MONTHS[ALL_MONTHS.length-1]||'';
+  FILTERED_MONTHS.forEach(m=>mSel.innerHTML+='<option value="'+m+'">'+m+'</option>');
+  mSel.value=FILTERED_MONTHS[FILTERED_MONTHS.length-1]||'';
   fillSel('f-zone',[...new Set(RAW.map(d=>d.zone).filter(Boolean))].sort(),'Zones');
   fillSel('f-cp',['Critical Product','Others'],'Category');
   storeSearch=makeSearchSel('ssw-store','ssb-store','ssp-store','ssi-store','sso-store','f-store','ssv-store','All Stores');
