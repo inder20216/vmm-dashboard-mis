@@ -459,22 +459,13 @@ body{font-family:"Outfit",sans-serif;background:var(--bg);color:var(--text);min-
     <button class="bcancel" onclick="closeBuilder()">Cancel</button>
   </div>
   <div id="bpanel-chart" style="display:none">
-    <div class="bfield"><label>Chart Title</label><input id="b-chart-title" placeholder="e.g. Cases by State"/></div>
-    <div class="bfield"><label>Chart Type</label>
-      <select id="b-chart-type">
-        <option value="bar">Bar Chart</option>
-        <option value="hbar">Horizontal Bar</option>
-        <option value="pie">Pie / Donut</option>
-        <option value="table">Data Table</option>
-        <option value="trend">Monthly Trend (Line)</option>
-      </select>
-    </div>
-    <div class="bfield" id="b-groupby-wrap"><label>Group By</label>
+    <div class="bfield"><label>Chart Title <span style="font-size:9px;font-weight:400;text-transform:none">(optional)</span></label><input id="b-chart-title" placeholder="e.g. FM-wise Logged vs Closed vs Pending"/></div>
+    <div class="bfield"><label>Group By</label>
       <select id="b-chart-groupby">
-        <option value="zone">Zone</option>
-        <option value="store">Store Name</option>
-        <option value="vendor">Vendor</option>
         <option value="fm">FM Name</option>
+        <option value="store">Store Name</option>
+        <option value="zone">Zone</option>
+        <option value="vendor">Vendor</option>
         <option value="pn">Product Name</option>
         <option value="cp">Critical / Others</option>
         <option value="tat">TAT Status</option>
@@ -482,32 +473,23 @@ body{font-family:"Outfit",sans-serif;background:var(--bg);color:var(--text);min-
         <option value="fs">Current Status</option>
         <option value="state">State</option>
         <option value="region">Store Region</option>
-        <option value="complaint_type">Type of Complaint</option>
-        <option value="nature">Nature of Problem</option>
         <option value="product_type">Product Type</option>
       </select>
     </div>
-    <div class="bfield"><label>Metric</label>
-      <select id="b-chart-metric">
-        <option value="count">Count of Records</option>
-        <option value="logged">Count Logged</option>
-        <option value="closed">Count Closed</option>
-        <option value="pending">Count Pending</option>
-        <option value="overdue_gt30">Pending &gt; 30 Days</option>
-        <option value="beyond_tat">Count Beyond TAT</option>
-        <option value="within_tat">Count Within TAT</option>
-        <option value="avg_aging">Avg Aging (days)</option>
-        <option value="sum_aging">Sum Aging (days)</option>
-      </select>
-    </div>
-    <div class="bfield" id="b-topn-wrap"><label>Show Top</label>
+    <div class="bfield"><label>Show Top</label>
       <select id="b-chart-topn">
         <option value="10">Top 10</option>
         <option value="15">Top 15</option>
         <option value="20">Top 20</option>
         <option value="5">Top 5</option>
+        <option value="25">Top 25</option>
         <option value="0">All</option>
       </select>
+    </div>
+    <div class="bfield">
+      <label>Series <span style="font-size:9px;font-weight:400;text-transform:none;letter-spacing:0">— choose metric + Bar or Line per series (max 3)</span></label>
+      <div id="b-series-list" style="display:flex;flex-direction:column;gap:7px;margin-bottom:8px"></div>
+      <button id="b-add-series-btn" onclick="addBuilderSeries()" style="border:1.5px dashed rgba(26,108,196,0.35);background:rgba(26,108,196,0.04);color:var(--sky);border-radius:6px;padding:6px;font-size:10.5px;font-family:Outfit,sans-serif;font-weight:700;cursor:pointer;width:100%">+ Add Another Series</button>
     </div>
     <button class="badd-btn" onclick="addCustomChart()">Add Chart</button>
     <button class="bcancel" onclick="closeBuilder()">Cancel</button>
@@ -925,7 +907,7 @@ function requirePin(cb){
   const inp=document.getElementById('pin-input');inp.value='';document.getElementById('pin-error').textContent='';
   setTimeout(()=>inp.focus(),100);
 }
-function openBuilder(){requirePin(()=>document.getElementById('bmodal').classList.add('open'));}
+function openBuilder(){requirePin(()=>{document.getElementById('bmodal').classList.add('open');initBuilderSeries();});}
 function closePinModal(){document.getElementById('pin-overlay').style.display='none';_pinCallback=null;}
 function checkPin(){
   const v=document.getElementById('pin-input').value;
@@ -1055,16 +1037,77 @@ function getDimVal(d,dim){
 function getDimLabel(dim){return{zone:'Zone',store:'Store Name',vendor:'Vendor',fm:'FM Name',pn:'Product Name',cp:'Critical/Others',tat:'TAT Status',dr:'Delay Reason',fs:'Status',lmy:'Month',state:'State',region:'Store Region',complaint_type:'Complaint Type',nature:'Nature',product_type:'Product Type'}[dim]||dim;}
 function getMetricLabel(metric){return{count:'Count',logged:'Logged',closed:'Closed',pending:'Pending',overdue_gt30:'Pending >30d',beyond_tat:'Beyond TAT',within_tat:'Within TAT',avg_aging:'Avg Aging (d)',sum_aging:'Sum Aging (d)'}[metric]||metric;}
 
+const SERIES_COLORS=['#1a6cc4','#16a34a','#e11d48'];
+const METRIC_OPTIONS=[
+  ['logged','Logged'],['closed','Closed'],['pending','Pending'],
+  ['overdue_gt30','Pending >30d'],['beyond_tat','Beyond TAT'],
+  ['within_tat','Within TAT'],['count','Count'],
+  ['avg_aging','Avg Aging (days)'],['sum_aging','Sum Aging (days)']
+];
+function initBuilderSeries(){
+  const list=document.getElementById('b-series-list');
+  if(!list)return;
+  list.innerHTML='';
+  addBuilderSeries();
+  const btn=document.getElementById('b-add-series-btn');if(btn)btn.style.display='';
+}
+function addBuilderSeries(){
+  const list=document.getElementById('b-series-list');if(!list)return;
+  const idx=list.children.length;if(idx>=3)return;
+  const color=SERIES_COLORS[idx];
+  const row=document.createElement('div');
+  row.className='b-series-row';
+  row.setAttribute('style','display:flex;align-items:center;gap:6px;background:rgba(26,108,196,0.05);border-radius:7px;padding:7px 9px');
+  // Color dot
+  const dot=document.createElement('span');
+  dot.setAttribute('style','width:11px;height:11px;border-radius:50%;background:'+color+';flex-shrink:0;display:inline-block');
+  dot.dataset.color=color;row.appendChild(dot);
+  // Metric select
+  const ms=document.createElement('select');
+  ms.className='b-s-metric';
+  ms.setAttribute('style','flex:1;background:#fff;border:1px solid rgba(26,108,196,0.2);border-radius:6px;padding:5px 7px;font-size:11px;font-family:Outfit,sans-serif;outline:none;color:#0d2b4e');
+  METRIC_OPTIONS.forEach(([v,l])=>{
+    const o=document.createElement('option');o.value=v;o.textContent=l;
+    if(v===['logged','closed','pending'][idx])o.selected=true;
+    ms.appendChild(o);
+  });
+  row.appendChild(ms);
+  // Type select
+  const ts=document.createElement('select');
+  ts.className='b-s-stype';
+  ts.setAttribute('style','width:68px;background:#fff;border:1px solid rgba(26,108,196,0.2);border-radius:6px;padding:5px 6px;font-size:11px;font-family:Outfit,sans-serif;outline:none;color:#0d2b4e');
+  [['bar','▬ Bar'],['line','〜 Line']].forEach(([v,l])=>{
+    const o=document.createElement('option');o.value=v;o.textContent=l;ts.appendChild(o);
+  });
+  if(idx===2)ts.value='line'; // third series defaults to line
+  row.appendChild(ts);
+  // Remove button (not on first row)
+  if(idx>0){
+    const rb=document.createElement('button');rb.textContent='×';
+    rb.setAttribute('style','border:none;background:rgba(225,29,72,0.1);color:#e11d48;border-radius:5px;cursor:pointer;font-size:14px;padding:1px 7px;font-family:Outfit,sans-serif;flex-shrink:0;line-height:1.4');
+    rb.addEventListener('click',function(){
+      row.remove();
+      const btn=document.getElementById('b-add-series-btn');if(btn)btn.style.display='';
+    });
+    row.appendChild(rb);
+  }
+  list.appendChild(row);
+  if(list.children.length>=3){const btn=document.getElementById('b-add-series-btn');if(btn)btn.style.display='none';}
+}
 function addCustomChart(){
   const title=document.getElementById('b-chart-title').value.trim();
-  const type=document.getElementById('b-chart-type').value;
   const groupby=document.getElementById('b-chart-groupby').value;
-  const metric=document.getElementById('b-chart-metric').value;
   const topn=parseInt(document.getElementById('b-chart-topn').value)||0;
+  const series=[];
+  document.querySelectorAll('#b-series-list .b-series-row').forEach(function(row,i){
+    series.push({metric:row.querySelector('.b-s-metric').value,seriesType:row.querySelector('.b-s-stype').value,color:SERIES_COLORS[i]});
+  });
+  if(!series.length)return;
   const id='cc-'+Date.now(),canvasId='ccc-'+Date.now();
-  customCharts.push({id,canvasId,title,type,groupby,metric,topn});
-  ensureCustomChartsWrap();addCustomChartCard({id,canvasId,title,type,groupby,metric,topn});
+  customCharts.push({id,canvasId,title,groupby,topn,series});
+  ensureCustomChartsWrap();addCustomChartCard({id,canvasId,title,groupby,topn,series});
   closeBuilder();document.getElementById('b-chart-title').value='';
+  initBuilderSeries();
 }
 function ensureCustomChartsWrap(){
   if(!document.getElementById('custom-charts-wrap')){
@@ -1076,13 +1119,14 @@ function addCustomChartCard(cfg){
   const wrap=document.getElementById('custom-charts-wrap');
   const card=document.createElement('div');
   card.className='custom-chart-card';card.id=cfg.id;
-  const displayTitle=cfg.title||(cfg.type==='trend'?'Monthly Trend':getDimLabel(cfg.groupby)+' \u2014 '+getMetricLabel(cfg.metric));
+  const seriesDesc=cfg.series?cfg.series.map(s=>getMetricLabel(s.metric)).join(' · '):getMetricLabel(cfg.metric);
+  const displayTitle=cfg.title||(getDimLabel(cfg.groupby)+' \u2014 '+seriesDesc);
   const hdr=document.createElement('div');
-  hdr.setAttribute('style','display:flex;align-items:center;justify-content:space-between;margin-bottom:8px');
-  const tWrap=document.createElement('div');
+  hdr.setAttribute('style','display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;gap:8px');
+  const tWrap=document.createElement('div');tWrap.setAttribute('style','min-width:0;flex:1');
   const t=document.createElement('div');t.className='chart-title';t.textContent=displayTitle;
   const s=document.createElement('div');s.className='chart-sub';
-  s.textContent=getMetricLabel(cfg.metric)+' by '+(cfg.type==='trend'?'Month':getDimLabel(cfg.groupby));
+  s.textContent=seriesDesc+' by '+getDimLabel(cfg.groupby)+(cfg.topn>0?' · Top '+cfg.topn:'');
   tWrap.appendChild(t);tWrap.appendChild(s);
   // PIN-gated action buttons
   const btnWrap=document.createElement('div');btnWrap.setAttribute('style','display:flex;gap:5px;align-items:center;flex-shrink:0');
@@ -1101,35 +1145,61 @@ function addCustomChartCard(cfg){
   if(cfg.type==='table'){
     const d=document.createElement('div');d.id='tbl-'+cfg.canvasId;card.appendChild(d);
   }else{
-    const cv=document.createElement('canvas');cv.id=cfg.canvasId;cv.height=160;card.appendChild(cv);
+    const multiS=cfg.series&&cfg.series.length>1;
+    const cv=document.createElement('canvas');cv.id=cfg.canvasId;cv.height=multiS?200:160;card.appendChild(cv);
   }
   wrap.appendChild(card);
   renderOneCustomChart(cfg);
 }
 function renderCustomCharts(){customCharts.forEach(cfg=>renderOneCustomChart(cfg));}
 function renderOneCustomChart(cfg){
-  const sM=document.getElementById('f-month').value,base=getBase(),mn=m2n(sM);
-  if(cfg.type==='trend'){
-    const ALL_MONTHS=[...new Set(RAW.map(d=>d.lmy).filter(Boolean))].sort((a,b)=>m2n(a)-m2n(b));
-    mkLine(cfg.canvasId,ALL_MONTHS,[{label:getMetricLabel(cfg.metric),data:ALL_MONTHS.map(m=>computeMetric(base,cfg.metric,m)),borderColor:'rgba(26,108,196,0.9)',backgroundColor:'rgba(26,108,196,0.1)',borderWidth:2,fill:true,tension:0.3,pointRadius:3}]);
-    return;
-  }
-  const grouped={};base.forEach(d=>{const k=getDimVal(d,cfg.groupby)||'Unknown';if(!grouped[k])grouped[k]=[];grouped[k].push(d);});
-  let entries=Object.entries(grouped).map(([k,recs])=>([k,computeMetric(recs,cfg.metric,sM)]));
-  entries.sort((a,b)=>b[1]-a[1]);if(cfg.topn>0)entries=entries.slice(0,cfg.topn);
-  const labels=entries.map(([k])=>k),vals=entries.map(([,v])=>v);
-  if(cfg.type==='table'){
-    const el=document.getElementById('tbl-'+cfg.canvasId);if(!el)return;
-    el.innerHTML='<table class="custom-table"><thead><tr><th>#</th><th>'+getDimLabel(cfg.groupby)+'</th><th>'+getMetricLabel(cfg.metric)+'</th></tr></thead><tbody>'+labels.map((l,i)=>'<tr><td>'+(i+1)+'</td><td>'+l+'</td><td>'+(typeof vals[i]==='number'&&vals[i]%1!==0?vals[i].toFixed(1):vals[i].toLocaleString())+'</td></tr>').join('')+'</tbody></table>';
-    return;
-  }
-  if(cfg.type==='pie'){mkPie(cfg.canvasId,labels,vals,PALETTE.slice(0,labels.length));return;}
-  if(CH[cfg.canvasId])CH[cfg.canvasId].destroy();
-  const el=document.getElementById(cfg.canvasId);if(!el)return;
-  CH[cfg.canvasId]=new Chart(el.getContext('2d'),{type:'bar',data:{labels,datasets:[{label:getMetricLabel(cfg.metric),data:vals,backgroundColor:PALETTE.slice(0,labels.length),borderRadius:3}]},options:{
-    indexAxis:cfg.type==='hbar'?'y':'x',responsive:true,layout:{padding:{top:16}},
-    plugins:{legend:{display:false},tooltip:TIP,datalabels:{color:"#0d2b4e",font:{family:"Outfit",size:8,weight:"700"},anchor:"end",align:"end",offset:1,formatter:v=>v>0?v.toLocaleString():""}},
-    scales:{x:{...SB},y:{...SB,beginAtZero:true}}}});
+  const sM=document.getElementById('f-month').value,base=getBase();
+  const canvasId=cfg.canvasId;
+  // Build grouped entries
+  const grouped={};
+  base.forEach(d=>{const k=getDimVal(d,cfg.groupby)||'Unknown';if(!grouped[k])grouped[k]=[];grouped[k].push(d);});
+  // Determine series array (new multi-series format vs old single-metric)
+  const series=cfg.series||[{metric:cfg.metric,seriesType:cfg.type==='hbar'?'bar':'bar',color:'#1a6cc4'}];
+  // Sort entries by first series metric descending
+  let entries=Object.entries(grouped);
+  entries.sort((a,b)=>computeMetric(b[1],series[0].metric,sM)-computeMetric(a[1],series[0].metric,sM));
+  if(cfg.topn>0)entries=entries.slice(0,cfg.topn);
+  const labels=entries.map(([k])=>k);
+  // Build datasets
+  const datasets=series.map(function(s,i){
+    const vals=entries.map(([,recs])=>computeMetric(recs,s.metric,sM));
+    const col=s.color||SERIES_COLORS[i]||'#1a6cc4';
+    if(s.seriesType==='line'){
+      return{type:'line',label:getMetricLabel(s.metric),data:vals,
+        borderColor:col,backgroundColor:'transparent',
+        borderWidth:2.5,pointRadius:4,pointBackgroundColor:col,tension:0.3,order:0,
+        datalabels:{display:false}};
+    }else{
+      return{type:'bar',label:getMetricLabel(s.metric),data:vals,
+        backgroundColor:col+'bb',borderColor:col,borderWidth:1,borderRadius:3,order:1,
+        datalabels:{color:'#0d2b4e',font:{family:'Outfit',size:7,weight:'700'},
+          anchor:'end',align:'end',offset:1,formatter:function(v){return v>0?v.toLocaleString():'';}
+        }};
+    }
+  });
+  if(CH[canvasId])CH[canvasId].destroy();
+  const el=document.getElementById(canvasId);if(!el)return;
+  const multiSeries=series.length>1;
+  CH[canvasId]=new Chart(el.getContext('2d'),{
+    type:'bar',
+    data:{labels,datasets},
+    options:{
+      responsive:true,
+      layout:{padding:{top:multiSeries?4:16}},
+      plugins:{
+        legend:{display:multiSeries,position:'top',
+          labels:{font:{family:'Outfit',size:9,weight:'600'},boxWidth:10,padding:8,color:'#0d2b4e'}},
+        tooltip:TIP,
+        datalabels:{}
+      },
+      scales:{x:{...SB},y:{...SB,beginAtZero:true}}
+    }
+  });
 }
 function moveChart(id,dir){
   const i=customCharts.findIndex(c=>c.id===id);if(i<0)return;
