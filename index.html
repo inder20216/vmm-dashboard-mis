@@ -82,11 +82,14 @@ body{font-family:"Outfit",sans-serif;background:var(--bg);color:var(--text);min-
 .kpi-lbl{font-size:9.5px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.6px}
 .kpi-sub{font-size:8.5px;color:var(--muted);margin-top:3px;opacity:0.75}
 
-/* CHART GRID — 2 cols per row, each row compact */
-.r2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
-.r2b{display:grid;grid-template-columns:1.2fr 0.8fr;gap:10px;margin-bottom:10px}
-.r1{display:grid;grid-template-columns:1fr;margin-bottom:10px}
-.chart-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:13px 15px;box-shadow:var(--shadow)}
+/* CHART GRID — flat 2-col sortable grid */
+.charts-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
+.chart-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:13px 15px;box-shadow:var(--shadow);position:relative;transition:box-shadow .15s,border-color .15s}
+.chart-card.dragging{opacity:0.35;border:2px dashed var(--sky);box-shadow:none}
+.chart-card.drag-over{border-color:var(--sky);box-shadow:0 0 0 2px rgba(26,108,196,0.18);background:rgba(26,108,196,0.03)}
+.drag-handle{position:absolute;top:10px;right:12px;cursor:grab;color:#c8d8ea;font-size:15px;line-height:1;user-select:none;z-index:5;transition:color .15s}
+.drag-handle:hover{color:#4a7aaa}
+.drag-handle:active{cursor:grabbing}
 .chart-title{font-size:11.5px;font-weight:700;color:#0d2b4e;margin-bottom:1px}
 .chart-sub{font-size:9px;color:var(--muted);margin-bottom:8px}
 
@@ -293,37 +296,39 @@ body{font-family:"Outfit",sans-serif;background:var(--bg);color:var(--text);min-
 </div>
 </div>
 
-<!-- ROW 1: Top 15 Stores + Zone-wise -->
-<div class="r2">
-  <div class="chart-card">
+<!-- SORTABLE CHART GRID -->
+<div id="charts-grid" class="charts-grid">
+
+  <div class="chart-card" id="card-store" draggable="true">
+    <div class="drag-handle" title="Drag to reorder">⠿</div>
     <div class="chart-title">🏪 Top 15 Stores — Logged Cases</div>
     <div class="chart-sub">Stores with highest logged case count</div>
     <canvas id="ch-store" height="150"></canvas>
   </div>
-  <div class="chart-card">
+
+  <div class="chart-card" id="card-zone" draggable="true">
+    <div class="drag-handle" title="Drag to reorder">⠿</div>
     <div class="chart-title">🌍 Zone-wise — Logged · Closed · Pending</div>
     <div class="chart-sub">All zones comparison</div>
     <canvas id="ch-zone" height="150"></canvas>
   </div>
-</div>
 
-<!-- ROW 2: Critical Product + Critical Product Names -->
-<div class="r2">
-  <div class="chart-card">
+  <div class="chart-card" id="card-cp" draggable="true">
+    <div class="drag-handle" title="Drag to reorder">⠿</div>
     <div class="chart-title">🏷️ Critical Product — Logged · Closed · Pending</div>
     <div class="chart-sub">Critical Product vs Others</div>
     <canvas id="ch-cp" height="145"></canvas>
   </div>
-  <div class="chart-card">
+
+  <div class="chart-card" id="card-cpn" draggable="true">
+    <div class="drag-handle" title="Drag to reorder">⠿</div>
     <div class="chart-title">🔍 Critical Case - bifurcation of product Names</div>
     <div class="chart-sub">Per critical product type breakdown</div>
     <canvas id="ch-cpn" height="145"></canvas>
   </div>
-</div>
 
-<!-- ROW 3: FM-wise Closed >30 + TAT Status -->
-<div class="r2">
-  <div class="chart-card">
+  <div class="chart-card" id="card-fm" draggable="true">
+    <div class="drag-handle" title="Drag to reorder">⠿</div>
     <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:4px">
       <div>
         <div class="chart-title">👤 FM-wise Closed Cases &gt; 30 Days</div>
@@ -336,7 +341,9 @@ body{font-family:"Outfit",sans-serif;background:var(--bg);color:var(--text);min-
     </div>
     <canvas id="ch-fm" height="140"></canvas>
   </div>
-  <div class="chart-card" style="display:flex;flex-direction:column">
+
+  <div class="chart-card" id="card-tat" draggable="true" style="display:flex;flex-direction:column">
+    <div class="drag-handle" title="Drag to reorder">⠿</div>
     <div class="chart-title">📊 TAT Status - Closed Case</div>
     <div class="chart-sub" id="tat-sub">Within TAT vs Beyond TAT for logged cases</div>
     <div style="display:flex;align-items:center;justify-content:center;gap:28px;flex:1;padding:12px 8px">
@@ -344,16 +351,14 @@ body{font-family:"Outfit",sans-serif;background:var(--bg);color:var(--text);min-
       <div id="tat-legend" style="display:flex;flex-direction:column;gap:18px"></div>
     </div>
   </div>
-</div>
 
-<!-- ROW 4: Last Delay Reason -->
-<div class="r2">
-  <div class="chart-card">
+  <div class="chart-card" id="card-delay" draggable="true">
+    <div class="drag-handle" title="Drag to reorder">⠿</div>
     <div class="chart-title">⚠️ Last Delay Reason — Pending Cases</div>
     <div class="chart-sub">Case count &amp; avg aging — pending cases by logged month</div>
     <div id="delay-list" class="delay-list" style="max-height:200px;overflow-y:auto;margin-top:4px"></div>
   </div>
-  <div class="chart-card" style="opacity:0;pointer-events:none"></div>
+
 </div>
 
 </div>
@@ -1251,8 +1256,63 @@ function moveChart(id,dir){
 }
 function removeChart(id){customCharts=customCharts.filter(c=>c.id!==id);const el=document.getElementById(id);if(el)el.remove();}
 
+// DRAG-AND-DROP chart reordering
+function initDragDrop(){
+  const grid=document.getElementById('charts-grid');if(!grid)return;
+  let dragSrc=null;
+  function cardOf(el){return el.closest('.chart-card[draggable]');}
+  grid.addEventListener('dragstart',function(e){
+    const card=cardOf(e.target);if(!card)return;
+    dragSrc=card;
+    setTimeout(()=>card.classList.add('dragging'),0);
+    e.dataTransfer.effectAllowed='move';
+  });
+  grid.addEventListener('dragover',function(e){
+    e.preventDefault();e.dataTransfer.dropEffect='move';
+    const card=cardOf(e.target);
+    if(card&&card!==dragSrc){
+      grid.querySelectorAll('.drag-over').forEach(c=>c.classList.remove('drag-over'));
+      card.classList.add('drag-over');
+    }
+  });
+  grid.addEventListener('dragleave',function(e){
+    const card=cardOf(e.target);
+    if(card&&!card.contains(e.relatedTarget))card.classList.remove('drag-over');
+  });
+  grid.addEventListener('drop',function(e){
+    e.preventDefault();
+    const target=cardOf(e.target);
+    if(!target||target===dragSrc)return;
+    target.classList.remove('drag-over');
+    const rect=target.getBoundingClientRect();
+    const after=e.clientY>rect.top+rect.height/2||e.clientX>rect.left+rect.width/2;
+    grid.insertBefore(dragSrc,after?target.nextSibling:target);
+    saveChartOrder();
+  });
+  grid.addEventListener('dragend',function(){
+    grid.querySelectorAll('.chart-card').forEach(c=>c.classList.remove('dragging','drag-over'));
+    dragSrc=null;
+  });
+}
+function saveChartOrder(){
+  try{
+    const order=[...document.querySelectorAll('#charts-grid .chart-card[id]')].map(c=>c.id);
+    localStorage.setItem('vmm_chart_order',JSON.stringify(order));
+  }catch(e){}
+}
+function loadChartOrder(){
+  try{
+    const saved=localStorage.getItem('vmm_chart_order');if(!saved)return;
+    const order=JSON.parse(saved);
+    const grid=document.getElementById('charts-grid');if(!grid)return;
+    order.forEach(id=>{const c=document.getElementById(id);if(c&&c.parentNode===grid)grid.appendChild(c);});
+  }catch(e){}
+}
+
 // START
 loadData();
+initDragDrop();
+loadChartOrder();
 </script>
 
 
