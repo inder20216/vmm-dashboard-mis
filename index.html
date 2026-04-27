@@ -227,8 +227,9 @@ body{font-family:"Outfit",sans-serif;background:var(--bg);color:var(--text);min-
   <div class="hrr">
     <div class="rec-box">
       <div class="rec-main"><span id="rec-count">12,936</span> records loaded</div>
-      <div class="rec-upd">📅 Data updated till: <strong style="color:var(--amber)">31 Mar 2026</strong></div>
+      <div class="rec-upd">📅 Data updated till: <strong style="color:var(--amber)">31 Mar 2026</strong> &nbsp;·&nbsp; 🕐 <span id="fetch-time">—</span></div>
     </div>
+    <button class="help-btn" onclick="refreshData()" id="refresh-btn">🔄 Refresh Data</button>
     <button class="help-btn" onclick="downloadCSV()">⬇️ Download</button>
     <button class="help-btn" onclick="document.getElementById('hmodal').classList.add('open')">📖 Instructions</button>
   </div>
@@ -603,7 +604,7 @@ function transformRow(row){
 
 // LOAD — with localStorage cache (4-hour TTL) for instant repeat visits
 const LS_KEY='vmm_data_v13'; // bump version to bust old cache
-const LS_TTL=4*60*60*1000; // 4 hours in ms
+const LS_TTL=30*60*1000; // 30 minutes
 
 function applyData(jsonData){
   RAW=(jsonData.data||[]).map(transformRow).filter(Boolean);
@@ -633,9 +634,21 @@ async function fetchFresh(){
   const raw=await res.json();
   // n8n returns array directly; Apps Script returns {data:[], total:N}
   const rows=Array.isArray(raw)?raw:(raw.data||[]);
-  const json={data:rows,total:rows.length};
+  const json={data:rows,total:rows.length,fetchedAt:Date.now()};
   lsSet(LS_KEY,JSON.stringify({ts:Date.now(),payload:json}));
   return json;
+}
+function refreshData(){
+  try{sessionStorage.removeItem(LS_KEY);}catch(e){}
+  try{localStorage.removeItem(LS_KEY);}catch(e){}
+  const btn=document.getElementById('refresh-btn');
+  if(btn){btn.disabled=true;btn.textContent='⏳ Refreshing…';}
+  loadData().finally(()=>{if(btn){btn.disabled=false;btn.textContent='🔄 Refresh Data';}});
+}
+function updateFetchLabel(ts){
+  const el=document.getElementById('fetch-time');if(!el)return;
+  const ago=Math.round((Date.now()-ts)/60000);
+  el.textContent=ago<1?'just now':ago===1?'1 min ago':ago<60?ago+' mins ago':Math.round(ago/60)+'h ago';
 }
 
 async function loadData(){
@@ -648,14 +661,15 @@ async function loadData(){
       const age=Date.now()-ts;
       if(age<LS_TTL&&(payload.data||[]).length>0){
         applyData(payload);
+        updateFetchLabel(ts);
         showLoading(false);
-        if(age>30*60*1000){fetchFresh().catch(()=>{});}
         return;
       }
     }
     // No valid cache — fetch fresh
     const json=await fetchFresh();
     applyData(json);
+    updateFetchLabel(json.fetchedAt||Date.now());
   }catch(e){showError(e.message);}
   showLoading(false);
 }
