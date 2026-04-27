@@ -359,6 +359,20 @@ body{font-family:"Outfit",sans-serif;background:var(--bg);color:var(--text);min-
     <div id="delay-list" class="delay-list" style="max-height:200px;overflow-y:auto;margin-top:4px"></div>
   </div>
 
+  <div class="chart-card" id="card-ho-lcp" draggable="true">
+    <div class="drag-handle" title="Drag to reorder">⠿</div>
+    <div class="chart-title">🏢 HO-wise — Logged · Closed · Pending</div>
+    <div class="chart-sub">All HO teams comparison</div>
+    <canvas id="ch-ho-lcp" height="160"></canvas>
+  </div>
+
+  <div class="chart-card" id="card-ho-gt30" draggable="true">
+    <div class="drag-handle" title="Drag to reorder">⠿</div>
+    <div class="chart-title">🏢 HO-wise — Pending &gt;30 Days</div>
+    <div class="chart-sub">Pending cases with Over Due TAT &gt; 30 days per HO team</div>
+    <canvas id="ch-ho-gt30" height="160"></canvas>
+  </div>
+
 </div>
 
 </div>
@@ -470,6 +484,7 @@ body{font-family:"Outfit",sans-serif;background:var(--bg);color:var(--text);min-
     <div class="bfield"><label>Group By</label>
       <select id="b-chart-groupby">
         <option value="fm">FM Name</option>
+        <option value="ho">HO</option>
         <option value="store">Store Name</option>
         <option value="zone">Zone</option>
         <option value="vendor">Vendor</option>
@@ -567,7 +582,8 @@ function transformRow(row){
     tat:otat===0?'Within TAT':'Beyond TAT',
     dr:String(row['Last Delay reason']||'').trim(),
     aging:parseFloat(row['Aging'])||0,pn,
-    fm:String(row['FM Name-U']||row['FM Name']||'').trim(),otat,_raw:row};
+    fm:String(row['FM Name-U']||row['FM Name']||'').trim(),
+    ho:String(row['HO']||'').trim(),otat,_raw:row};
 }
 
 // LOAD — with localStorage cache (4-hour TTL) for instant repeat visits
@@ -847,6 +863,20 @@ function render(){
   // Zone
   mkBar("ch-zone",ALL_ZONES,L3.map((lbl,i)=>({label:lbl,data:ALL_ZONES.map(z=>calc(base.filter(d=>d.zone===z),sM)[i]),backgroundColor:C3[i],borderRadius:3})));
 
+  // HO-wise Logged · Closed · Pending
+  const ALL_HO=[...new Set(RAW.filter(d=>d.ho).map(d=>d.ho))].sort();
+  mkBar("ch-ho-lcp",ALL_HO,L3.map((lbl,i)=>({label:lbl,data:ALL_HO.map(h=>calc(base.filter(d=>d.ho===h),sM)[i]),backgroundColor:C3[i],borderRadius:3})));
+
+  // HO-wise Pending >30 Days
+  const hoGt30={};
+  base.forEach(d=>{
+    const isPend=sM?(m2n(d.lmy)<=mn&&(!d.cmy||m2n(d.cmy)>mn)):!d.cmy;
+    if(isPend&&d.otat>=31&&d.ho){hoGt30[d.ho]=(hoGt30[d.ho]||0)+1;}
+  });
+  const hoGt30Arr=Object.entries(hoGt30).sort((a,b)=>b[1]-a[1]);
+  mkBar("ch-ho-gt30",hoGt30Arr.map(([h])=>h),[{label:"Pending >30 Days",data:hoGt30Arr.map(([,c])=>c),backgroundColor:"rgba(225,29,72,0.75)",borderRadius:3}],
+    {dl:{formatter:v=>v>0?v:""},extra:{plugins:{legend:{display:false}}}});
+
   // Delay reason
   const drMap={};
   base.filter(d=>d.fs!=="Closed"&&(!sM||d.lmy===sM)).forEach(d=>{
@@ -1071,6 +1101,7 @@ function getDimVal(d,dim){
     case'zone':return d.zone;case'store':return d.store;case'vendor':return d.vendor;
     case'fm':return d.fm;case'pn':return d.pn;case'cp':return d.cp;
     case'tat':return d.tat;case'dr':return d.dr||'Unspecified';case'fs':return d.fs;case'lmy':return d.lmy;
+    case'ho':return d.ho||'Unknown';
     case'state':return String(d._raw['State']||'Unknown');case'region':return String(d._raw['Store Region']||'Unknown');
     case'complaint_type':return String(d._raw['Type of Complaint']||'Unknown');
     case'nature':return String(d._raw['Nature of Problem']||'Unknown');
@@ -1078,7 +1109,7 @@ function getDimVal(d,dim){
     default:return'Unknown';
   }
 }
-function getDimLabel(dim){return{zone:'Zone',store:'Store Name',vendor:'Vendor',fm:'FM Name',pn:'Product Name',cp:'Critical/Others',tat:'TAT Status',dr:'Delay Reason',fs:'Status',lmy:'Month',state:'State',region:'Store Region',complaint_type:'Complaint Type',nature:'Nature',product_type:'Product Type'}[dim]||dim;}
+function getDimLabel(dim){return{zone:'Zone',store:'Store Name',vendor:'Vendor',fm:'FM Name',ho:'HO',pn:'Product Name',cp:'Critical/Others',tat:'TAT Status',dr:'Delay Reason',fs:'Status',lmy:'Month',state:'State',region:'Store Region',complaint_type:'Complaint Type',nature:'Nature',product_type:'Product Type'}[dim]||dim;}
 function getMetricLabel(metric){return{count:'Count',logged:'Logged',closed:'Closed',pending:'Pending',overdue_gt30:'Pending >30d',beyond_tat:'Beyond TAT',within_tat:'Within TAT',avg_aging:'Avg Aging (d)',sum_aging:'Sum Aging (d)'}[metric]||metric;}
 
 const SERIES_COLORS=['#1a6cc4','#16a34a','#e11d48'];
