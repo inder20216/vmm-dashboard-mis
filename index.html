@@ -83,7 +83,7 @@ body{font-family:"Outfit",sans-serif;background:var(--bg);color:var(--text);min-
 .kpi-sub{font-size:8.5px;color:var(--muted);margin-top:3px;opacity:0.75}
 
 /* CHART GRID — flat 2-col sortable grid */
-.charts-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
+.charts-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,540px),1fr));gap:10px;margin-bottom:10px}
 .chart-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:13px 15px;box-shadow:var(--shadow);position:relative;transition:box-shadow .15s,border-color .15s}
 .chart-card.dragging{opacity:0.35;border:2px dashed var(--sky);box-shadow:none}
 .chart-card.drag-over{border-color:var(--sky);box-shadow:0 0 0 2px rgba(26,108,196,0.18);background:rgba(26,108,196,0.03)}
