@@ -327,12 +327,19 @@ body{font-family:"Outfit",sans-serif;background:var(--bg);color:var(--text);min-
     <canvas id="ch-cpn" height="145"></canvas>
   </div>
 
+  <div class="chart-card" id="card-fm-lcp" draggable="true">
+    <div class="drag-handle" title="Drag to reorder">⠿</div>
+    <div class="chart-title">👤 FM-wise — Logged · Closed · Pending</div>
+    <div class="chart-sub">All FM comparison (top 15)</div>
+    <canvas id="ch-fm-lcp" height="160"></canvas>
+  </div>
+
   <div class="chart-card" id="card-fm" draggable="true">
     <div class="drag-handle" title="Drag to reorder">⠿</div>
     <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:4px">
       <div>
-        <div class="chart-title">👤 FM-wise Closed Cases &gt; 30 Days</div>
-        <div class="chart-sub">Count of closed cases with Over Due TAT &gt; 30 days per FM</div>
+        <div class="chart-title">👤 FM-wise — Pending &gt;30 Days</div>
+        <div class="chart-sub">Count of pending cases with Over Due TAT &gt; 30 days per FM</div>
       </div>
       <div style="background:linear-gradient(135deg,#e11d48,#be123c);border-radius:8px;padding:5px 12px;text-align:center;flex-shrink:0;margin-left:10px">
         <div style="font-size:20px;font-weight:800;color:#fff;line-height:1;letter-spacing:-0.5px" id="fm-total-num">—</div>
@@ -368,9 +375,17 @@ body{font-family:"Outfit",sans-serif;background:var(--bg);color:var(--text);min-
 
   <div class="chart-card" id="card-ho-gt30" draggable="true">
     <div class="drag-handle" title="Drag to reorder">⠿</div>
-    <div class="chart-title">🏢 HO-wise — Pending &gt;30 Days</div>
-    <div class="chart-sub">Pending cases with Over Due TAT &gt; 30 days per HO team</div>
-    <canvas id="ch-ho-gt30" height="160"></canvas>
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:4px">
+      <div>
+        <div class="chart-title">🏢 HO-wise — Pending &gt;30 Days</div>
+        <div class="chart-sub">Pending cases with Over Due TAT &gt; 30 days per HO team</div>
+      </div>
+      <div style="background:linear-gradient(135deg,#e11d48,#be123c);border-radius:8px;padding:5px 12px;text-align:center;flex-shrink:0;margin-left:10px">
+        <div style="font-size:20px;font-weight:800;color:#fff;line-height:1;letter-spacing:-0.5px" id="ho-gt30-total-num">—</div>
+        <div style="font-size:8px;font-weight:700;color:rgba(255,255,255,0.8);text-transform:uppercase;letter-spacing:0.5px;margin-top:1px">Total</div>
+      </div>
+    </div>
+    <canvas id="ch-ho-gt30" height="140"></canvas>
   </div>
 
 </div>
@@ -845,13 +860,21 @@ function render(){
   const cpA=Object.entries(cpNM).sort((a,b)=>b[1].length-a[1].length).slice(0,8);
   mkBar("ch-cpn",cpA.map(([n])=>n),L3.map((lbl,i)=>({label:lbl,data:cpA.map(([,r])=>calc(r,sM)[i]),backgroundColor:C3[i],borderRadius:3})));
 
-  // FM closed >30
+  // FM-wise Logged · Closed · Pending
+  const ALL_FM=[...new Set(RAW.filter(d=>d.fm).map(d=>d.fm))].sort();
+  const fmLCPArr=ALL_FM.map(f=>({fm:f,vals:calc(base.filter(d=>d.fm===f),sM)})).sort((a,b)=>b.vals[0]-a.vals[0]).slice(0,15);
+  mkBar("ch-fm-lcp",fmLCPArr.map(r=>r.fm),L3.map((lbl,i)=>({label:lbl,data:fmLCPArr.map(r=>r.vals[i]),backgroundColor:C3[i],borderRadius:3})));
+
+  // FM pending >30
   const fmData={};
-  base.filter(d=>d.fs==="Closed"&&d.otat>30&&(!sM||d.cmy===sM)).forEach(d=>{const fm=d.fm||"Unknown";fmData[fm]=(fmData[fm]||0)+1;});
+  base.forEach(d=>{
+    const isPend=sM?(m2n(d.lmy)<=mn&&(!d.cmy||m2n(d.cmy)>mn)):!d.cmy;
+    if(isPend&&d.otat>=31&&d.fm){fmData[d.fm]=(fmData[d.fm]||0)+1;}
+  });
   const fmArr=Object.entries(fmData).sort((a,b)=>b[1]-a[1]).slice(0,12);
   const fmTotalEl=document.getElementById("fm-total-num");
   if(fmTotalEl)fmTotalEl.textContent=Object.values(fmData).reduce((s,c)=>s+c,0).toLocaleString();
-  mkBar("ch-fm",fmArr.map(([fm])=>fm),[{label:"Closed >30 Days",data:fmArr.map(([,c])=>c),backgroundColor:"rgba(225,29,72,0.75)",borderRadius:3}],
+  mkBar("ch-fm",fmArr.map(([fm])=>fm),[{label:"Pending >30 Days",data:fmArr.map(([,c])=>c),backgroundColor:"rgba(225,29,72,0.75)",borderRadius:3}],
     {dl:{formatter:v=>v>0?v:""},extra:{plugins:{legend:{display:false}}}});
 
   // Top 15 stores
@@ -874,6 +897,8 @@ function render(){
     if(isPend&&d.otat>=31&&d.ho){hoGt30[d.ho]=(hoGt30[d.ho]||0)+1;}
   });
   const hoGt30Arr=Object.entries(hoGt30).sort((a,b)=>b[1]-a[1]);
+  const hoGt30TotalEl=document.getElementById("ho-gt30-total-num");
+  if(hoGt30TotalEl)hoGt30TotalEl.textContent=Object.values(hoGt30).reduce((s,c)=>s+c,0).toLocaleString();
   mkBar("ch-ho-gt30",hoGt30Arr.map(([h])=>h),[{label:"Pending >30 Days",data:hoGt30Arr.map(([,c])=>c),backgroundColor:"rgba(225,29,72,0.75)",borderRadius:3}],
     {dl:{formatter:v=>v>0?v:""},extra:{plugins:{legend:{display:false}}}});
 
