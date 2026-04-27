@@ -227,7 +227,7 @@ body{font-family:"Outfit",sans-serif;background:var(--bg);color:var(--text);min-
   <div class="hrr">
     <div class="rec-box">
       <div class="rec-main"><span id="rec-count">12,936</span> records loaded</div>
-      <div class="rec-upd">📅 Data updated till: <strong style="color:var(--amber)">31 Mar 2026</strong> &nbsp;·&nbsp; 🕐 <span id="fetch-time">—</span></div>
+      <div class="rec-upd">📅 Data updated till: <strong style="color:var(--amber)">31 Mar 2026</strong> &nbsp;·&nbsp; 🕐 Fetched at <span id="fetch-time">—</span></div>
     </div>
     <button class="help-btn" onclick="refreshData()" id="refresh-btn">🔄 Refresh Data</button>
     <button class="help-btn" onclick="downloadCSV()">⬇️ Download</button>
@@ -602,10 +602,6 @@ function transformRow(row){
     ho:String(row['HO']||'').trim(),otat,_raw:row};
 }
 
-// LOAD — with localStorage cache (4-hour TTL) for instant repeat visits
-const LS_KEY='vmm_data_v13'; // bump version to bust old cache
-const LS_TTL=30*60*1000; // 30 minutes
-
 function applyData(jsonData){
   RAW=(jsonData.data||[]).map(transformRow).filter(Boolean);
   document.getElementById('rec-count').textContent=RAW.length.toLocaleString();
@@ -614,62 +610,26 @@ function applyData(jsonData){
     const el=document.querySelector('.rec-upd strong');
     if(el)el.textContent=new Date(Math.max(...dates)).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});
   }
+  const ftEl=document.getElementById('fetch-time');
+  if(ftEl)ftEl.textContent=new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
   initFilters();render();
   renderStoreWidget(document.getElementById('f-month').value);
 }
 
-// Use sessionStorage (not blocked by Edge tracking prevention) with localStorage fallback
-function lsGet(key){
-  try{const v=sessionStorage.getItem(key);if(v)return v;}catch(e){}
-  try{return localStorage.getItem(key);}catch(e){return null;}
-}
-function lsSet(key,val){
-  try{sessionStorage.setItem(key,val);return;}catch(e){}
-  try{localStorage.setItem(key,val);}catch(e){}
-}
-
-async function fetchFresh(){
-  const res=await fetch(SCRIPT_URL);
-  if(!res.ok)throw new Error('HTTP '+res.status);
-  const raw=await res.json();
-  // n8n returns array directly; Apps Script returns {data:[], total:N}
-  const rows=Array.isArray(raw)?raw:(raw.data||[]);
-  const json={data:rows,total:rows.length,fetchedAt:Date.now()};
-  lsSet(LS_KEY,JSON.stringify({ts:Date.now(),payload:json}));
-  return json;
-}
 function refreshData(){
-  try{sessionStorage.removeItem(LS_KEY);}catch(e){}
-  try{localStorage.removeItem(LS_KEY);}catch(e){}
   const btn=document.getElementById('refresh-btn');
   if(btn){btn.disabled=true;btn.textContent='⏳ Refreshing…';}
   loadData().finally(()=>{if(btn){btn.disabled=false;btn.textContent='🔄 Refresh Data';}});
-}
-function updateFetchLabel(ts){
-  const el=document.getElementById('fetch-time');if(!el)return;
-  const ago=Math.round((Date.now()-ts)/60000);
-  el.textContent=ago<1?'just now':ago===1?'1 min ago':ago<60?ago+' mins ago':Math.round(ago/60)+'h ago';
 }
 
 async function loadData(){
   showLoading(true);
   try{
-    // Try localStorage first (silently skip if blocked)
-    const cached=lsGet(LS_KEY);
-    if(cached){
-      const {ts,payload}=JSON.parse(cached);
-      const age=Date.now()-ts;
-      if(age<LS_TTL&&(payload.data||[]).length>0){
-        applyData(payload);
-        updateFetchLabel(ts);
-        showLoading(false);
-        return;
-      }
-    }
-    // No valid cache — fetch fresh
-    const json=await fetchFresh();
-    applyData(json);
-    updateFetchLabel(json.fetchedAt||Date.now());
+    const res=await fetch(SCRIPT_URL);
+    if(!res.ok)throw new Error('HTTP '+res.status);
+    const raw=await res.json();
+    const rows=Array.isArray(raw)?raw:(raw.data||[]);
+    applyData({data:rows,total:rows.length});
   }catch(e){showError(e.message);}
   showLoading(false);
 }
