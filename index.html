@@ -236,7 +236,8 @@ body{font-family:"Outfit",sans-serif;background:var(--bg);color:var(--text);min-
       <button class="help-btn" onclick="toggleDlMenu()" id="dl-btn">⬇️ Download ▾</button>
       <div id="dl-menu" style="display:none;position:absolute;right:0;top:calc(100% + 4px);background:#fff;border:1px solid rgba(26,108,196,0.18);border-radius:8px;box-shadow:0 6px 20px rgba(13,43,78,0.14);z-index:500;min-width:220px;overflow:hidden">
         <button onclick="downloadCSV('logged')" style="display:block;width:100%;text-align:left;padding:9px 14px;border:none;background:none;font-family:Outfit,sans-serif;font-size:11px;font-weight:600;color:#0d2b4e;cursor:pointer;border-bottom:1px solid rgba(26,108,196,0.08)" onmouseover="this.style.background='#f0f6ff'" onmouseout="this.style.background='none'">📅 Logged in Selected Month</button>
-        <button onclick="downloadCSV('closed')" style="display:block;width:100%;text-align:left;padding:9px 14px;border:none;background:none;font-family:Outfit,sans-serif;font-size:11px;font-weight:600;color:#0d2b4e;cursor:pointer" onmouseover="this.style.background='#f0f6ff'" onmouseout="this.style.background='none'">✅ Closed in Selected Month</button>
+        <button onclick="downloadCSV('closed')" style="display:block;width:100%;text-align:left;padding:9px 14px;border:none;background:none;font-family:Outfit,sans-serif;font-size:11px;font-weight:600;color:#0d2b4e;cursor:pointer;border-bottom:1px solid rgba(26,108,196,0.08)" onmouseover="this.style.background='#f0f6ff'" onmouseout="this.style.background='none'">✅ Closed in Selected Month</button>
+        <button onclick="downloadCSV('pending_gt30')" style="display:block;width:100%;text-align:left;padding:9px 14px;border:none;background:none;font-family:Outfit,sans-serif;font-size:11px;font-weight:600;color:#0d2b4e;cursor:pointer" onmouseover="this.style.background='#f0f6ff'" onmouseout="this.style.background='none'">⏰ Pending &gt;30 Days</button>
       </div>
     </div>
     <button class="help-btn" onclick="document.getElementById('hmodal').classList.add('open')">📖 Instructions</button>
@@ -1031,9 +1032,13 @@ function downloadCSV(mode){
   if(mode==='logged'){
     filtered=sM?RAW.filter(d=>d.lmy===sM):RAW;
     label=sM?'Logged_'+sM:'Logged_All';
-  }else{
+  }else if(mode==='closed'){
     filtered=sM?RAW.filter(d=>d.cmy===sM&&d.fs==="Closed"):RAW.filter(d=>d.fs==="Closed");
     label=sM?'Closed_'+sM:'Closed_All';
+  }else{
+    const mn=m2n(sM);
+    filtered=sM?RAW.filter(d=>m2n(d.lmy)<=mn&&(!d.cmy||m2n(d.cmy)>mn)&&d.otat>=31):RAW.filter(d=>!d.cmy&&d.otat>=31);
+    label=sM?'Pending_GT30_'+sM:'Pending_GT30_All';
   }
   if(!filtered.length){alert('No records found for this selection.');return;}
   const headers=Object.keys(filtered[0]._raw).filter(h=>h!=='');
