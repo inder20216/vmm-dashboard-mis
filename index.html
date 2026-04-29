@@ -342,7 +342,7 @@ body{font-family:"Outfit",sans-serif;background:var(--bg);color:var(--text);min-
     <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:4px">
       <div>
         <div class="chart-title">👤 FM-wise — Cases &gt;30 Days</div>
-        <div class="chart-sub">Pending + Closed cases with TAT &gt; 30 days per FM</div>
+        <div class="chart-sub">Pending &amp; Closed cases with TAT &gt; 30 days per FM</div>
       </div>
       <div style="background:linear-gradient(135deg,#e11d48,#be123c);border-radius:8px;padding:5px 12px;text-align:center;flex-shrink:0;margin-left:10px">
         <div style="font-size:20px;font-weight:800;color:#fff;line-height:1;letter-spacing:-0.5px" id="fm-total-num">—</div>
@@ -381,7 +381,7 @@ body{font-family:"Outfit",sans-serif;background:var(--bg);color:var(--text);min-
     <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:4px">
       <div>
         <div class="chart-title">🏢 HO-wise — Cases &gt;30 Days</div>
-        <div class="chart-sub">Pending + Closed cases with TAT &gt; 30 days per HO team</div>
+        <div class="chart-sub">Pending &amp; Closed cases with TAT &gt; 30 days per HO team</div>
       </div>
       <div style="background:linear-gradient(135deg,#e11d48,#be123c);border-radius:8px;padding:5px 12px;text-align:center;flex-shrink:0;margin-left:10px">
         <div style="font-size:20px;font-weight:800;color:#fff;line-height:1;letter-spacing:-0.5px" id="ho-gt30-total-num">—</div>
@@ -839,17 +839,23 @@ function render(){
   const fmLCPArr=ALL_FM.map(f=>({fm:f,vals:calc(base.filter(d=>d.fm===f),sM)})).sort((a,b)=>b.vals[0]-a.vals[0]).slice(0,15);
   mkBar("ch-fm-lcp",fmLCPArr.map(r=>r.fm),L3.map((lbl,i)=>({label:lbl,data:fmLCPArr.map(r=>r.vals[i]),backgroundColor:C3[i],borderRadius:3})));
 
-  // FM cases >30 (pending + closed)
-  const fmData={};
+  // FM cases >30 — separate pending & closed bars
+  const fmGt30P={},fmGt30C={};
   base.forEach(d=>{
-    const relevant=sM?(m2n(d.lmy)<=mn&&d.otat>=31):(d.otat>=31);
-    if(relevant&&d.fm){fmData[d.fm]=(fmData[d.fm]||0)+1;}
+    if(d.otat<31||!d.fm)return;
+    const isPend=sM?(m2n(d.lmy)<=mn&&(!d.cmy||m2n(d.cmy)>mn)):!d.cmy;
+    const isClosed=sM?(d.cmy===sM&&d.fs==="Closed"):(d.cmy&&d.fs==="Closed");
+    if(isPend)fmGt30P[d.fm]=(fmGt30P[d.fm]||0)+1;
+    if(isClosed)fmGt30C[d.fm]=(fmGt30C[d.fm]||0)+1;
   });
-  const fmArr=Object.entries(fmData).sort((a,b)=>b[1]-a[1]).slice(0,12);
+  const fmGt30Keys=[...new Set([...Object.keys(fmGt30P),...Object.keys(fmGt30C)])]
+    .sort((a,b)=>((fmGt30P[b]||0)+(fmGt30C[b]||0))-((fmGt30P[a]||0)+(fmGt30C[a]||0))).slice(0,12);
   const fmTotalEl=document.getElementById("fm-total-num");
-  if(fmTotalEl)fmTotalEl.textContent=Object.values(fmData).reduce((s,c)=>s+c,0).toLocaleString();
-  mkBar("ch-fm",fmArr.map(([fm])=>fm),[{label:">30 Days (Pending + Closed)",data:fmArr.map(([,c])=>c),backgroundColor:"rgba(225,29,72,0.75)",borderRadius:3}],
-    {dl:{formatter:v=>v>0?v:""},extra:{plugins:{legend:{display:false}}}});
+  if(fmTotalEl)fmTotalEl.textContent=fmGt30Keys.reduce((s,k)=>(fmGt30P[k]||0)+(fmGt30C[k]||0)+s,0).toLocaleString();
+  mkBar("ch-fm",fmGt30Keys,[
+    {label:"Pending >30d",data:fmGt30Keys.map(k=>fmGt30P[k]||0),backgroundColor:"rgba(225,29,72,0.75)",borderRadius:3},
+    {label:"Closed >30d",data:fmGt30Keys.map(k=>fmGt30C[k]||0),backgroundColor:"rgba(234,88,12,0.75)",borderRadius:3}
+  ],{dl:{formatter:v=>v>0?v:""}});
 
   // Top 15 stores
   const stMap={};(sM?base.filter(d=>d.lmy===sM):base).forEach(d=>{if(!d.store)return;stMap[d.store]=(stMap[d.store]||0)+1;});
@@ -864,17 +870,23 @@ function render(){
   const ALL_HO=[...new Set(RAW.filter(d=>d.ho).map(d=>d.ho))].sort();
   mkBar("ch-ho-lcp",ALL_HO,L3.map((lbl,i)=>({label:lbl,data:ALL_HO.map(h=>calc(base.filter(d=>d.ho===h),sM)[i]),backgroundColor:C3[i],borderRadius:3})));
 
-  // HO-wise cases >30 (pending + closed)
-  const hoGt30={};
+  // HO-wise cases >30 — separate pending & closed bars
+  const hoGt30P={},hoGt30C={};
   base.forEach(d=>{
-    const relevant=sM?(m2n(d.lmy)<=mn&&d.otat>=31):(d.otat>=31);
-    if(relevant&&d.ho){hoGt30[d.ho]=(hoGt30[d.ho]||0)+1;}
+    if(d.otat<31||!d.ho)return;
+    const isPend=sM?(m2n(d.lmy)<=mn&&(!d.cmy||m2n(d.cmy)>mn)):!d.cmy;
+    const isClosed=sM?(d.cmy===sM&&d.fs==="Closed"):(d.cmy&&d.fs==="Closed");
+    if(isPend)hoGt30P[d.ho]=(hoGt30P[d.ho]||0)+1;
+    if(isClosed)hoGt30C[d.ho]=(hoGt30C[d.ho]||0)+1;
   });
-  const hoGt30Arr=Object.entries(hoGt30).sort((a,b)=>b[1]-a[1]);
+  const hoGt30Keys=[...new Set([...Object.keys(hoGt30P),...Object.keys(hoGt30C)])]
+    .sort((a,b)=>((hoGt30P[b]||0)+(hoGt30C[b]||0))-((hoGt30P[a]||0)+(hoGt30C[a]||0)));
   const hoGt30TotalEl=document.getElementById("ho-gt30-total-num");
-  if(hoGt30TotalEl)hoGt30TotalEl.textContent=Object.values(hoGt30).reduce((s,c)=>s+c,0).toLocaleString();
-  mkBar("ch-ho-gt30",hoGt30Arr.map(([h])=>h),[{label:">30 Days (Pending + Closed)",data:hoGt30Arr.map(([,c])=>c),backgroundColor:"rgba(225,29,72,0.75)",borderRadius:3}],
-    {dl:{formatter:v=>v>0?v:""},extra:{plugins:{legend:{display:false}}}});
+  if(hoGt30TotalEl)hoGt30TotalEl.textContent=hoGt30Keys.reduce((s,k)=>(hoGt30P[k]||0)+(hoGt30C[k]||0)+s,0).toLocaleString();
+  mkBar("ch-ho-gt30",hoGt30Keys,[
+    {label:"Pending >30d",data:hoGt30Keys.map(k=>hoGt30P[k]||0),backgroundColor:"rgba(225,29,72,0.75)",borderRadius:3},
+    {label:"Closed >30d",data:hoGt30Keys.map(k=>hoGt30C[k]||0),backgroundColor:"rgba(234,88,12,0.75)",borderRadius:3}
+  ],{dl:{formatter:v=>v>0?v:""}});
 
   // Delay reason
   const drMap={};
