@@ -450,6 +450,27 @@ body{font-family:"Outfit",sans-serif;background:var(--bg);color:var(--text);min-
   </div>
 </div>
 
+<!-- STORE MONTH MODAL -->
+<div id="store-month-overlay" style="display:none;position:fixed;inset:0;background:rgba(13,43,78,0.5);z-index:2000;align-items:center;justify-content:center">
+  <div style="background:#fff;border-radius:14px;padding:28px 32px;max-width:320px;width:100%;box-shadow:0 20px 50px rgba(13,43,78,0.25)">
+    <div style="font-size:14px;font-weight:800;color:#0d2b4e;margin-bottom:4px" id="sm-modal-title">Add Month</div>
+    <div style="font-size:11px;color:#4a7aaa;margin-bottom:18px">Enter the month and store count</div>
+    <div style="margin-bottom:12px">
+      <label style="font-size:10px;font-weight:700;color:#0d2b4e;text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:4px">Month</label>
+      <input id="sm-month-input" type="text" placeholder="e.g. May'26" style="width:100%;box-sizing:border-box;padding:9px 12px;border:1.5px solid rgba(26,108,196,0.25);border-radius:8px;font-size:13px;font-family:Outfit,sans-serif;outline:none;color:#0d2b4e">
+    </div>
+    <div style="margin-bottom:18px">
+      <label style="font-size:10px;font-weight:700;color:#0d2b4e;text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:4px">Store Count</label>
+      <input id="sm-count-input" type="number" min="0" placeholder="e.g. 800" style="width:100%;box-sizing:border-box;padding:9px 12px;border:1.5px solid rgba(26,108,196,0.25);border-radius:8px;font-size:13px;font-family:Outfit,sans-serif;outline:none;color:#0d2b4e">
+    </div>
+    <div id="sm-error" style="font-size:11px;color:#e11d48;min-height:16px;margin-bottom:10px"></div>
+    <div style="display:flex;gap:8px">
+      <button onclick="closeStoreModal()" style="flex:1;padding:9px;border:1px solid rgba(26,108,196,0.2);border-radius:8px;background:#f0f6ff;color:#4a7aaa;font-family:Outfit,sans-serif;font-weight:700;font-size:12px;cursor:pointer">Cancel</button>
+      <button onclick="saveStoreModal()" style="flex:1;padding:9px;border:none;border-radius:8px;background:#1a6cc4;color:#fff;font-family:Outfit,sans-serif;font-weight:700;font-size:12px;cursor:pointer">Save</button>
+    </div>
+  </div>
+</div>
+
 <!-- ANALYTICS BUILDER MODAL -->
 <div class="bmodal-overlay" id="bmodal" onclick="if(event.target===this)closeBuilder()">
 <div class="bmodal">
@@ -938,30 +959,40 @@ function renderStoreWidget(sM){
     }).join('')
     +'</tbody></table>';
 }
+let _smEditIdx=null;
+function openStoreModal(title,month,count,editIdx){
+  _smEditIdx=editIdx!=null?editIdx:null;
+  document.getElementById('sm-modal-title').textContent=title;
+  document.getElementById('sm-month-input').value=month||'';
+  document.getElementById('sm-month-input').readOnly=editIdx!=null;
+  document.getElementById('sm-month-input').style.background=editIdx!=null?'#f5f8fc':'';
+  document.getElementById('sm-count-input').value=count!=null?count:'';
+  document.getElementById('sm-error').textContent='';
+  document.getElementById('store-month-overlay').style.display='flex';
+  setTimeout(()=>document.getElementById(editIdx!=null?'sm-count-input':'sm-month-input').focus(),100);
+}
+function closeStoreModal(){document.getElementById('store-month-overlay').style.display='none';_smEditIdx=null;}
+function saveStoreModal(){
+  const m=document.getElementById('sm-month-input').value.trim();
+  const nRaw=document.getElementById('sm-count-input').value;
+  const n=parseInt(String(nRaw).replace(/,/g,''),10);
+  if(!m){document.getElementById('sm-error').textContent='Month is required.';return;}
+  if(isNaN(n)||n<0){document.getElementById('sm-error').textContent='Enter a valid count.';return;}
+  if(_smEditIdx!=null){
+    storeCounts[_smEditIdx].n=n;
+  }else{
+    if(storeCounts.find(e=>e.m===m)){document.getElementById('sm-error').textContent=m+' already exists — use ✏️ to edit.';return;}
+    storeCounts.push({m,n});
+  }
+  saveStoreCounts();closeStoreModal();
+  renderStoreWidget(document.getElementById('f-month').value);
+}
+document.addEventListener('keydown',e=>{if(e.key==='Enter'&&document.getElementById('store-month-overlay').style.display==='flex')saveStoreModal();});
 function editStoreMonthCount(idx){
-  requirePin(function(){
-    const e=storeCounts[idx];
-    const val=window.prompt('Store count for '+e.m+':\n(current: '+e.n+')',String(e.n));
-    if(val===null)return;
-    const n=parseInt(val.replace(/,/g,''),10);
-    if(isNaN(n)||n<0){alert('Enter a valid number');return;}
-    storeCounts[idx].n=n;saveStoreCounts();
-    renderStoreWidget(document.getElementById('f-month').value);
-  });
+  requirePin(function(){const e=storeCounts[idx];openStoreModal('Edit Month',e.m,e.n,idx);});
 }
 function addStoreMonth(){
-  requirePin(function(){
-    const mVal=window.prompt("Month name (e.g. May'26):",'');
-    if(!mVal||!mVal.trim())return;
-    const m=mVal.trim();
-    if(storeCounts.find(e=>e.m===m)){alert(m+' already exists — use ✏️ to edit it.');return;}
-    const nVal=window.prompt('Store count for '+m+':','0');
-    if(nVal===null)return;
-    const n=parseInt(nVal.replace(/,/g,''),10);
-    if(isNaN(n)||n<0){alert('Enter a valid number');return;}
-    storeCounts.push({m,n});saveStoreCounts();
-    renderStoreWidget(document.getElementById('f-month').value);
-  });
+  requirePin(function(){openStoreModal('Add Month','',null,null);});
 }
 
 // DOWNLOAD
@@ -996,8 +1027,9 @@ function closePinModal(){document.getElementById('pin-overlay').style.display='n
 function checkPin(){
   const v=document.getElementById('pin-input').value;
   if(v===BUILDER_PIN){
+    const cb=_pinCallback;
     closePinModal();
-    if(_pinCallback){const cb=_pinCallback;_pinCallback=null;cb();}
+    if(cb){cb();}
     else{document.getElementById('bmodal').classList.add('open');initBuilderSeries();}
   }else{document.getElementById('pin-error').textContent='Incorrect PIN. Try again.';document.getElementById('pin-input').value='';}
 }
