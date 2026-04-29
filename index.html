@@ -344,9 +344,15 @@ body{font-family:"Outfit",sans-serif;background:var(--bg);color:var(--text);min-
         <div class="chart-title">👤 FM-wise — Cases &gt;30 Days</div>
         <div class="chart-sub">Pending &amp; Closed cases with TAT &gt; 30 days per FM</div>
       </div>
-      <div style="background:linear-gradient(135deg,#e11d48,#be123c);border-radius:8px;padding:5px 12px;text-align:center;flex-shrink:0;margin-left:10px">
-        <div style="font-size:20px;font-weight:800;color:#fff;line-height:1;letter-spacing:-0.5px" id="fm-total-num">—</div>
-        <div style="font-size:8px;font-weight:700;color:rgba(255,255,255,0.8);text-transform:uppercase;letter-spacing:0.5px;margin-top:1px">Total</div>
+      <div style="display:flex;gap:6px;flex-shrink:0;margin-left:10px">
+        <div style="background:linear-gradient(135deg,#e11d48,#be123c);border-radius:8px;padding:5px 10px;text-align:center">
+          <div style="font-size:18px;font-weight:800;color:#fff;line-height:1;letter-spacing:-0.5px" id="fm-pend-num">—</div>
+          <div style="font-size:8px;font-weight:700;color:rgba(255,255,255,0.8);text-transform:uppercase;letter-spacing:0.5px;margin-top:1px">Pending</div>
+        </div>
+        <div style="background:linear-gradient(135deg,#ea580c,#c2410c);border-radius:8px;padding:5px 10px;text-align:center">
+          <div style="font-size:18px;font-weight:800;color:#fff;line-height:1;letter-spacing:-0.5px" id="fm-closed-num">—</div>
+          <div style="font-size:8px;font-weight:700;color:rgba(255,255,255,0.8);text-transform:uppercase;letter-spacing:0.5px;margin-top:1px">Closed</div>
+        </div>
       </div>
     </div>
     <canvas id="ch-fm" height="140"></canvas>
@@ -383,9 +389,15 @@ body{font-family:"Outfit",sans-serif;background:var(--bg);color:var(--text);min-
         <div class="chart-title">🏢 HO-wise — Cases &gt;30 Days</div>
         <div class="chart-sub">Pending &amp; Closed cases with TAT &gt; 30 days per HO team</div>
       </div>
-      <div style="background:linear-gradient(135deg,#e11d48,#be123c);border-radius:8px;padding:5px 12px;text-align:center;flex-shrink:0;margin-left:10px">
-        <div style="font-size:20px;font-weight:800;color:#fff;line-height:1;letter-spacing:-0.5px" id="ho-gt30-total-num">—</div>
-        <div style="font-size:8px;font-weight:700;color:rgba(255,255,255,0.8);text-transform:uppercase;letter-spacing:0.5px;margin-top:1px">Total</div>
+      <div style="display:flex;gap:6px;flex-shrink:0;margin-left:10px">
+        <div style="background:linear-gradient(135deg,#e11d48,#be123c);border-radius:8px;padding:5px 10px;text-align:center">
+          <div style="font-size:18px;font-weight:800;color:#fff;line-height:1;letter-spacing:-0.5px" id="ho-gt30-pend-num">—</div>
+          <div style="font-size:8px;font-weight:700;color:rgba(255,255,255,0.8);text-transform:uppercase;letter-spacing:0.5px;margin-top:1px">Pending</div>
+        </div>
+        <div style="background:linear-gradient(135deg,#ea580c,#c2410c);border-radius:8px;padding:5px 10px;text-align:center">
+          <div style="font-size:18px;font-weight:800;color:#fff;line-height:1;letter-spacing:-0.5px" id="ho-gt30-closed-num">—</div>
+          <div style="font-size:8px;font-weight:700;color:rgba(255,255,255,0.8);text-transform:uppercase;letter-spacing:0.5px;margin-top:1px">Closed</div>
+        </div>
       </div>
     </div>
     <canvas id="ch-ho-gt30" height="140"></canvas>
@@ -871,8 +883,9 @@ function render(){
   });
   const fmGt30Keys=[...new Set([...Object.keys(fmGt30P),...Object.keys(fmGt30C)])]
     .sort((a,b)=>((fmGt30P[b]||0)+(fmGt30C[b]||0))-((fmGt30P[a]||0)+(fmGt30C[a]||0))).slice(0,12);
-  const fmTotalEl=document.getElementById("fm-total-num");
-  if(fmTotalEl)fmTotalEl.textContent=fmGt30Keys.reduce((s,k)=>(fmGt30P[k]||0)+(fmGt30C[k]||0)+s,0).toLocaleString();
+  const fmPendEl=document.getElementById("fm-pend-num"),fmClosedEl=document.getElementById("fm-closed-num");
+  if(fmPendEl)fmPendEl.textContent=Object.values(fmGt30P).reduce((s,c)=>s+c,0).toLocaleString();
+  if(fmClosedEl)fmClosedEl.textContent=Object.values(fmGt30C).reduce((s,c)=>s+c,0).toLocaleString();
   mkBar("ch-fm",fmGt30Keys,[
     {label:"Pending >30d",data:fmGt30Keys.map(k=>fmGt30P[k]||0),backgroundColor:"rgba(225,29,72,0.75)",borderRadius:3},
     {label:"Closed >30d",data:fmGt30Keys.map(k=>fmGt30C[k]||0),backgroundColor:"rgba(234,88,12,0.75)",borderRadius:3}
@@ -902,8 +915,9 @@ function render(){
   });
   const hoGt30Keys=[...new Set([...Object.keys(hoGt30P),...Object.keys(hoGt30C)])]
     .sort((a,b)=>((hoGt30P[b]||0)+(hoGt30C[b]||0))-((hoGt30P[a]||0)+(hoGt30C[a]||0)));
-  const hoGt30TotalEl=document.getElementById("ho-gt30-total-num");
-  if(hoGt30TotalEl)hoGt30TotalEl.textContent=hoGt30Keys.reduce((s,k)=>(hoGt30P[k]||0)+(hoGt30C[k]||0)+s,0).toLocaleString();
+  const hoPendEl=document.getElementById("ho-gt30-pend-num"),hoClosedEl=document.getElementById("ho-gt30-closed-num");
+  if(hoPendEl)hoPendEl.textContent=Object.values(hoGt30P).reduce((s,c)=>s+c,0).toLocaleString();
+  if(hoClosedEl)hoClosedEl.textContent=Object.values(hoGt30C).reduce((s,c)=>s+c,0).toLocaleString();
   mkBar("ch-ho-gt30",hoGt30Keys,[
     {label:"Pending >30d",data:hoGt30Keys.map(k=>hoGt30P[k]||0),backgroundColor:"rgba(225,29,72,0.75)",borderRadius:3},
     {label:"Closed >30d",data:hoGt30Keys.map(k=>hoGt30C[k]||0),backgroundColor:"rgba(234,88,12,0.75)",borderRadius:3}
