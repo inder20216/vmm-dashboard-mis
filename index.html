@@ -1036,9 +1036,8 @@ function downloadCSV(mode){
     filtered=sM?RAW.filter(d=>d.cmy===sM&&d.fs==="Closed"):RAW.filter(d=>d.fs==="Closed");
     label=sM?'Closed_'+sM:'Closed_All';
   }else{
-    const mn=m2n(sM);
-    filtered=sM?RAW.filter(d=>m2n(d.lmy)<=mn&&(!d.cmy||m2n(d.cmy)>mn)&&d.otat>=31):RAW.filter(d=>!d.cmy&&d.otat>=31);
-    label=sM?'Pending_GT30_'+sM:'Pending_GT30_All';
+    filtered=RAW.filter(d=>!d.cmy&&d.otat>=31);
+    label='Pending_GT30_Overall';
   }
   if(!filtered.length){alert('No records found for this selection.');return;}
   const headers=Object.keys(filtered[0]._raw).filter(h=>h!=='');
