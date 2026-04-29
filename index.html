@@ -232,7 +232,13 @@ body{font-family:"Outfit",sans-serif;background:var(--bg);color:var(--text);min-
     </div>
     <button class="help-btn" onclick="toggleReorderMode()" id="reorder-btn">⠿ Reorder Charts</button>
     <button class="help-btn" onclick="refreshData()" id="refresh-btn">🔄 Refresh Data</button>
-    <button class="help-btn" onclick="downloadCSV()">⬇️ Download</button>
+    <div style="position:relative;display:inline-block" id="dl-wrap">
+      <button class="help-btn" onclick="toggleDlMenu()" id="dl-btn">⬇️ Download ▾</button>
+      <div id="dl-menu" style="display:none;position:absolute;right:0;top:calc(100% + 4px);background:#fff;border:1px solid rgba(26,108,196,0.18);border-radius:8px;box-shadow:0 6px 20px rgba(13,43,78,0.14);z-index:500;min-width:220px;overflow:hidden">
+        <button onclick="downloadCSV('logged')" style="display:block;width:100%;text-align:left;padding:9px 14px;border:none;background:none;font-family:Outfit,sans-serif;font-size:11px;font-weight:600;color:#0d2b4e;cursor:pointer;border-bottom:1px solid rgba(26,108,196,0.08)" onmouseover="this.style.background='#f0f6ff'" onmouseout="this.style.background='none'">📅 Logged in Selected Month</button>
+        <button onclick="downloadCSV('closed')" style="display:block;width:100%;text-align:left;padding:9px 14px;border:none;background:none;font-family:Outfit,sans-serif;font-size:11px;font-weight:600;color:#0d2b4e;cursor:pointer" onmouseover="this.style.background='#f0f6ff'" onmouseout="this.style.background='none'">✅ Closed in Selected Month</button>
+      </div>
+    </div>
     <button class="help-btn" onclick="document.getElementById('hmodal').classList.add('open')">📖 Instructions</button>
   </div>
 </div>
@@ -1010,9 +1016,26 @@ function addStoreMonth(){
 }
 
 // DOWNLOAD
-function downloadCSV(){
-  const filtered=RAW;
-  if(!filtered.length){alert('No data for current selection');return;}
+function toggleDlMenu(){
+  const m=document.getElementById('dl-menu');
+  m.style.display=m.style.display==='none'?'block':'none';
+}
+document.addEventListener('click',function(e){
+  const w=document.getElementById('dl-wrap');
+  if(w&&!w.contains(e.target))document.getElementById('dl-menu').style.display='none';
+});
+function downloadCSV(mode){
+  document.getElementById('dl-menu').style.display='none';
+  const sM=document.getElementById('f-month').value;
+  let filtered,label;
+  if(mode==='logged'){
+    filtered=sM?RAW.filter(d=>d.lmy===sM):RAW;
+    label=sM?'Logged_'+sM:'Logged_All';
+  }else{
+    filtered=sM?RAW.filter(d=>d.cmy===sM&&d.fs==="Closed"):RAW.filter(d=>d.fs==="Closed");
+    label=sM?'Closed_'+sM:'Closed_All';
+  }
+  if(!filtered.length){alert('No records found for this selection.');return;}
   const headers=Object.keys(filtered[0]._raw).filter(h=>h!=='');
   const fmtD=v=>{if(!v)return'';const d=parseDate(String(v));return d?d.toLocaleDateString('en-GB',{day:'2-digit',month:'2-digit',year:'numeric'}):String(v);};
   const rows=[headers.map(h=>'"'+h+'"').join(','),
@@ -1023,7 +1046,7 @@ function downloadCSV(){
   const blob=new Blob([rows.join('\n')],{type:'text/csv'});
   const url=URL.createObjectURL(blob);
   const a=document.createElement('a');a.href=url;
-  a.download='VMM_'+(sM||'All')+'_'+new Date().toISOString().slice(0,10)+'.csv';
+  a.download='VMM_'+label+'_'+new Date().toISOString().slice(0,10)+'.csv';
   a.click();URL.revokeObjectURL(url);
 }
 
