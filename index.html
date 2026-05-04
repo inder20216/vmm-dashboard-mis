@@ -282,12 +282,12 @@ body{font-family:"Outfit",sans-serif;background:var(--bg);color:var(--text);min-
   <div class="kpi" style="--kc:#16a34a">
     <div class="kpi-top"><div class="kpi-icon">✅</div><div class="kpi-badge fl" id="b-closed">—</div></div>
     <div class="kpi-val" id="v-closed">0</div>
-    <div class="kpi-lbl">Closed</div><div class="kpi-sub">Logged &amp; closed same month</div>
+    <div class="kpi-lbl">Closed</div><div class="kpi-sub">Total closed in selected month</div>
   </div>
   <div class="kpi" style="--kc:#d97706">
     <div class="kpi-top"><div class="kpi-icon">⏳</div><div class="kpi-badge fl" id="b-pending">—</div></div>
     <div class="kpi-val" id="v-pending">0</div>
-    <div class="kpi-lbl">Pending</div><div class="kpi-sub">Logged − Closed (same month)</div>
+    <div class="kpi-lbl">Pending</div><div class="kpi-sub">Logged in month, not yet closed</div>
   </div>
   <div class="kpi" style="--kc:#7c3aed">
     <div class="kpi-top"><div class="kpi-icon">🔄</div><div class="kpi-badge fl" id="b-old" style="display:none">—</div></div>
@@ -833,8 +833,8 @@ function render(){
 
   // KPIs
   const kLg=sM?base.filter(d=>d.lmy===sM).length:base.length;
-  const kCl=sM?base.filter(d=>d.cmy===sM&&d.lmy===sM&&d.fs==="Closed").length:base.filter(d=>d.fs==="Closed"&&d.lmy===d.cmy).length;
-  const kPe=sM?kLg-kCl:base.filter(d=>d.fs!=="Closed").length;
+  const kCl=sM?base.filter(d=>d.cmy===sM&&d.fs==="Closed").length:base.filter(d=>d.fs==="Closed").length;
+  const kPe=sM?base.filter(d=>d.lmy===sM&&(!d.cmy||m2n(d.cmy)>mn)).length:base.filter(d=>d.fs!=="Closed").length;
   const kOc=sM?base.filter(d=>d.cmy===sM&&m2n(d.lmy)<mn&&d.fs==="Closed").length:base.filter(d=>d.fs==="Closed"&&d.lmy!==d.cmy).length;
   // Overall Pending: logged <= selected month AND (no close date OR close date > selected month)
   const isPend=d=>m2n(d.lmy)<=mn&&(!d.cmy||m2n(d.cmy)>mn);
@@ -852,15 +852,16 @@ function render(){
     if(mIdx>0){
       const pm=ALL_MONTHS[mIdx-1];const pb=getBase();
       const pLg=pb.filter(d=>d.lmy===pm).length;
-      const pCl=pb.filter(d=>d.cmy===pm&&d.lmy===pm&&d.fs==="Closed").length;
-      setBadge("b-logged",kLg,pLg);setBadge("b-closed",kCl,pCl);setBadge("b-pending",kPe,pLg-pCl);
+      const pCl=pb.filter(d=>d.cmy===pm&&d.fs==="Closed").length;
+      const pPe=pb.filter(d=>d.lmy===pm&&(!d.cmy||m2n(d.cmy)>m2n(pm))).length;
+      setBadge("b-logged",kLg,pLg);setBadge("b-closed",kCl,pCl);setBadge("b-pending",kPe,pPe);
     }else["b-logged","b-closed","b-pending"].forEach(id=>setBadge(id,0,null));
   }else["b-logged","b-closed","b-pending"].forEach(id=>setBadge(id,0,null));
 
   // TAT Pie
-  const tatRecs=sM?base.filter(d=>d.lmy===sM&&d.cmy===sM&&d.fs==="Closed"):base.filter(d=>d.fs==="Closed"&&d.lmy===d.cmy);
+  const tatRecs=sM?base.filter(d=>d.cmy===sM&&d.fs==="Closed"):base.filter(d=>d.fs==="Closed");
   const tatW=tatRecs.filter(d=>d.tat==="Within TAT").length,tatB=tatRecs.filter(d=>d.tat==="Beyond TAT").length,tatTotal=tatW+tatB;
-  document.getElementById("tat-sub").textContent="Logged & closed same month — "+(sM||"All Months");
+  document.getElementById("tat-sub").textContent="All cases closed in "+(sM||"All Months");
   mkPie("ch-tat",["Within TAT","Beyond TAT"],[tatW,tatB],["rgba(22,163,74,0.85)","rgba(225,29,72,0.85)"]);
   document.getElementById("tat-legend").innerHTML=[{label:"Within TAT",val:tatW,color:"#16a34a"},{label:"Beyond TAT",val:tatB,color:"#e11d48"}]
     .map(item=>{const pct=tatTotal>0?(item.val/tatTotal*100).toFixed(1):0;
