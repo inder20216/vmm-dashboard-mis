@@ -341,7 +341,7 @@ body{font-family:"Outfit",sans-serif;background:var(--bg);color:var(--text);min-
     <div class="drag-handle" title="Drag to reorder">⠿</div>
     <div class="chart-title">👤 FM-wise — Logged · Closed · Pending</div>
     <div class="chart-sub">All FM comparison (top 15)</div>
-    <canvas id="ch-fm-lcp" height="160"></canvas>
+    <canvas id="ch-fm-lcp" height="180"></canvas>
   </div>
 
   <div class="chart-card" id="card-fm" draggable="true">
@@ -362,7 +362,7 @@ body{font-family:"Outfit",sans-serif;background:var(--bg);color:var(--text);min-
         </div>
       </div>
     </div>
-    <canvas id="ch-fm" height="140"></canvas>
+    <canvas id="ch-fm" height="160"></canvas>
   </div>
 
   <div class="chart-card" id="card-tat" draggable="true" style="display:flex;flex-direction:column">
@@ -877,7 +877,7 @@ function render(){
   // FM-wise Logged · Closed · Pending
   const ALL_FM=[...new Set(RAW.filter(d=>d.fm).map(d=>d.fm))].sort();
   const fmLCPArr=ALL_FM.map(f=>({fm:f,vals:calc(base.filter(d=>d.fm===f),sM)})).sort((a,b)=>b.vals[0]-a.vals[0]).slice(0,15);
-  mkBar("ch-fm-lcp",fmLCPArr.map(r=>r.fm),L3.map((lbl,i)=>({label:lbl,data:fmLCPArr.map(r=>r.vals[i]),backgroundColor:C3[i],borderRadius:3})));
+  mkBar("ch-fm-lcp",fmLCPArr.map(r=>r.fm),L3.map((lbl,i)=>({label:lbl,data:fmLCPArr.map(r=>r.vals[i]),backgroundColor:C3[i],borderRadius:3})),{x:{...SB,ticks:{...TX,maxRotation:45,minRotation:30,callback:function(v){const l=this.getLabelForValue(v);return l&&l.length>14?l.slice(0,14)+'…':l;}}}});
 
   // FM cases >30 — separate pending & closed bars
   const fmGt30P={},fmGt30C={};
@@ -896,7 +896,7 @@ function render(){
   mkBar("ch-fm",fmGt30Keys,[
     {label:"Pending >30d",data:fmGt30Keys.map(k=>fmGt30P[k]||0),backgroundColor:"rgba(225,29,72,0.75)",borderRadius:3},
     {label:"Closed >30d",data:fmGt30Keys.map(k=>fmGt30C[k]||0),backgroundColor:"rgba(234,88,12,0.75)",borderRadius:3}
-  ],{dl:{formatter:v=>v>0?v:""}});
+  ],{dl:{formatter:v=>v>0?v:""},x:{...SB,ticks:{...TX,maxRotation:45,minRotation:30,callback:function(v){const l=this.getLabelForValue(v);return l&&l.length>14?l.slice(0,14)+'…':l;}}}});
 
   // Top 15 stores
   const stMap={};(sM?base.filter(d=>d.lmy===sM):base).forEach(d=>{if(!d.store)return;stMap[d.store]=(stMap[d.store]||0)+1;});
