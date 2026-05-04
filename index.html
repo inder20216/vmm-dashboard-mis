@@ -846,8 +846,8 @@ function render(){
   const kOp=allPend.length;
   animNum("v-logged",kLg);animNum("v-closed",kCl);animNum("v-pending",kPe);animNum("v-old",kOc);animNum("v-overall",kOp);
   // >30d and <30d based on Over Due TAT column (not Aging)
-  animNum("v-overall-gt30",allPend.filter(d=>d.otat>=31).length);
-  animNum("v-overall-lt30",allPend.filter(d=>d.otat<31).length);
+  animNum("v-overall-gt30",allPend.filter(d=>d.aging>=31).length);
+  animNum("v-overall-lt30",allPend.filter(d=>d.aging<31).length);
 
   // Badges
   if(sM){
@@ -885,7 +885,7 @@ function render(){
   // FM cases >30 — separate pending & closed bars
   const fmGt30P={},fmGt30C={};
   base.forEach(d=>{
-    if(d.otat<31||!d.fm||EXCLUDED_FMS.has(d.fm))return;
+    if(d.aging<31||!d.fm||EXCLUDED_FMS.has(d.fm))return;
     const isPend=sM?(m2n(d.lmy)<=mn&&(!d.cmy||m2n(d.cmy)>mn)):!d.cmy;
     const isClosed=sM?(d.cmy===sM&&d.fs==="Closed"):(d.cmy&&d.fs==="Closed");
     if(isPend)fmGt30P[d.fm]=(fmGt30P[d.fm]||0)+1;
@@ -896,8 +896,8 @@ function render(){
   // Badge totals from raw data (includes cases with no FM assigned)
   const _isPend=d=>sM?(m2n(d.lmy)<=mn&&(!d.cmy||m2n(d.cmy)>mn)):!d.cmy;
   const _isClosed=d=>sM?(d.cmy===sM&&d.fs==="Closed"):(d.cmy&&d.fs==="Closed");
-  if(fmPendEl)fmPendEl.textContent=base.filter(d=>d.otat>=31&&_isPend(d)).length.toLocaleString();
-  if(fmClosedEl)fmClosedEl.textContent=base.filter(d=>d.otat>=31&&_isClosed(d)).length.toLocaleString();
+  if(fmPendEl)fmPendEl.textContent=base.filter(d=>d.aging>=31&&_isPend(d)).length.toLocaleString();
+  if(fmClosedEl)fmClosedEl.textContent=base.filter(d=>d.aging>=31&&_isClosed(d)).length.toLocaleString();
   mkBar("ch-fm",fmGt30Keys,[
     {label:"Pending >30d",data:fmGt30Keys.map(k=>fmGt30P[k]||0),backgroundColor:"rgba(225,29,72,0.75)",borderRadius:3},
     {label:"Closed >30d",data:fmGt30Keys.map(k=>fmGt30C[k]||0),backgroundColor:"rgba(234,88,12,0.75)",borderRadius:3}
@@ -919,7 +919,7 @@ function render(){
   // HO-wise cases >30 — separate pending & closed bars
   const hoGt30P={},hoGt30C={};
   base.forEach(d=>{
-    if(d.otat<31||!d.ho)return;
+    if(d.aging<31||!d.ho)return;
     const isPend=sM?(m2n(d.lmy)<=mn&&(!d.cmy||m2n(d.cmy)>mn)):!d.cmy;
     const isClosed=sM?(d.cmy===sM&&d.fs==="Closed"):(d.cmy&&d.fs==="Closed");
     if(isPend)hoGt30P[d.ho]=(hoGt30P[d.ho]||0)+1;
@@ -1041,7 +1041,7 @@ function downloadCSV(mode){
     filtered=sM?RAW.filter(d=>d.cmy===sM&&d.fs==="Closed"):RAW.filter(d=>d.fs==="Closed");
     label=sM?'Closed_'+sM:'Closed_All';
   }else{
-    filtered=RAW.filter(d=>!d.cmy&&d.otat>=31);
+    filtered=RAW.filter(d=>!d.cmy&&d.aging>=31);
     label='Pending_GT30_Overall';
   }
   if(!filtered.length){alert('No records found for this selection.');return;}
@@ -1112,8 +1112,8 @@ function computeMetric(recs,metric,sM){
       ?recs.filter(d=>m2n(d.lmy)<=mn&&(!d.cmy||m2n(d.cmy)>mn)).length
       :recs.filter(d=>!d.cmy).length;
     case'overdue_gt30':return sM
-      ?recs.filter(d=>m2n(d.lmy)<=mn&&(!d.cmy||m2n(d.cmy)>mn)&&d.otat>=31).length
-      :recs.filter(d=>!d.cmy&&d.otat>=31).length;
+      ?recs.filter(d=>m2n(d.lmy)<=mn&&(!d.cmy||m2n(d.cmy)>mn)&&d.aging>=31).length
+      :recs.filter(d=>!d.cmy&&d.aging>=31).length;
     case'beyond_tat':return recs.filter(d=>d.tat==="Beyond TAT").length;
     case'within_tat':return recs.filter(d=>d.tat==="Within TAT").length;
     case'avg_aging':return recs.length?+(recs.reduce((s,d)=>s+d.aging,0)/recs.length).toFixed(1):0;
