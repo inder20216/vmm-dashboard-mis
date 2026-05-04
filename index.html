@@ -590,6 +590,9 @@ const CRITICAL_PRODUCTS = new Set([
   'genset','electrical','electrical panel','ac',
   'server room ac','sensormatic','tiles','led light'
 ]);
+// FMs to exclude from charts (e.g. no longer with company)
+const EXCLUDED_FMS = new Set(['Manoj Jha']);
+
 const MON  = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 const MMAP = {Jan:0,Feb:1,Mar:2,Apr:3,May:4,Jun:5,Jul:6,Aug:7,Sep:8,Oct:9,Nov:10,Dec:11};
 
@@ -875,23 +878,26 @@ function render(){
   mkBar("ch-cpn",cpA.map(([n])=>n),L3.map((lbl,i)=>({label:lbl,data:cpA.map(([,r])=>calc(r,sM)[i]),backgroundColor:C3[i],borderRadius:3})));
 
   // FM-wise Logged · Closed · Pending
-  const ALL_FM=[...new Set(RAW.filter(d=>d.fm).map(d=>d.fm))].sort();
+  const ALL_FM=[...new Set(RAW.filter(d=>d.fm&&!EXCLUDED_FMS.has(d.fm)).map(d=>d.fm))].sort();
   const fmLCPArr=ALL_FM.map(f=>({fm:f,vals:calc(base.filter(d=>d.fm===f),sM)})).sort((a,b)=>b.vals[0]-a.vals[0]).slice(0,15);
   mkBar("ch-fm-lcp",fmLCPArr.map(r=>r.fm),L3.map((lbl,i)=>({label:lbl,data:fmLCPArr.map(r=>r.vals[i]),backgroundColor:C3[i],borderRadius:3})),{x:{...SB,grid:{display:true,color:'rgba(26,108,196,0.07)',drawTicks:false},ticks:{...TX,maxRotation:45,minRotation:45}}});
 
   // FM cases >30 — separate pending & closed bars
   const fmGt30P={},fmGt30C={};
   base.forEach(d=>{
-    if(d.otat<31||!d.fm)return;
+    if(d.otat<31||!d.fm||EXCLUDED_FMS.has(d.fm))return;
     const isPend=sM?(m2n(d.lmy)<=mn&&(!d.cmy||m2n(d.cmy)>mn)):!d.cmy;
     const isClosed=sM?(d.cmy===sM&&d.fs==="Closed"):(d.cmy&&d.fs==="Closed");
     if(isPend)fmGt30P[d.fm]=(fmGt30P[d.fm]||0)+1;
     if(isClosed)fmGt30C[d.fm]=(fmGt30C[d.fm]||0)+1;
   });
-  const fmGt30Keys=ALL_FM.sort((a,b)=>((fmGt30P[b]||0)+(fmGt30C[b]||0))-((fmGt30P[a]||0)+(fmGt30C[a]||0)));
+  const fmGt30Keys=[...ALL_FM].sort((a,b)=>((fmGt30P[b]||0)+(fmGt30C[b]||0))-((fmGt30P[a]||0)+(fmGt30C[a]||0)));
   const fmPendEl=document.getElementById("fm-pend-num"),fmClosedEl=document.getElementById("fm-closed-num");
-  if(fmPendEl)fmPendEl.textContent=Object.values(fmGt30P).reduce((s,c)=>s+c,0).toLocaleString();
-  if(fmClosedEl)fmClosedEl.textContent=Object.values(fmGt30C).reduce((s,c)=>s+c,0).toLocaleString();
+  // Badge totals from raw data (includes cases with no FM assigned)
+  const _isPend=d=>sM?(m2n(d.lmy)<=mn&&(!d.cmy||m2n(d.cmy)>mn)):!d.cmy;
+  const _isClosed=d=>sM?(d.cmy===sM&&d.fs==="Closed"):(d.cmy&&d.fs==="Closed");
+  if(fmPendEl)fmPendEl.textContent=base.filter(d=>d.otat>=31&&_isPend(d)).length.toLocaleString();
+  if(fmClosedEl)fmClosedEl.textContent=base.filter(d=>d.otat>=31&&_isClosed(d)).length.toLocaleString();
   mkBar("ch-fm",fmGt30Keys,[
     {label:"Pending >30d",data:fmGt30Keys.map(k=>fmGt30P[k]||0),backgroundColor:"rgba(225,29,72,0.75)",borderRadius:3},
     {label:"Closed >30d",data:fmGt30Keys.map(k=>fmGt30C[k]||0),backgroundColor:"rgba(234,88,12,0.75)",borderRadius:3}
