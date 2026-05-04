@@ -868,7 +868,7 @@ function render(){
     }).join("");
 
   // CP charts
-  const bCP=sM?base.filter(d=>d.lmy===sM):base;
+  const bCP=base;
   mkBar("ch-cp",["Critical Product","Others"],L3.map((lbl,i)=>({label:lbl,data:["Critical Product","Others"].map(g=>calc(bCP.filter(d=>d.cp===g),sM)[i]),backgroundColor:C3[i],borderRadius:3})));
   const cpNM={};bCP.filter(d=>d.cp==="Critical Product").forEach(d=>{const n=d.pn||"Unknown";if(!cpNM[n])cpNM[n]=[];cpNM[n].push(d);});
   const cpA=Object.entries(cpNM).sort((a,b)=>b[1].length-a[1].length).slice(0,8);
