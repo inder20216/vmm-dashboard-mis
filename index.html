@@ -978,10 +978,11 @@ function render(){
 const STORE_COUNTS_DEFAULT=[
   {m:"Nov'25",n:734},{m:"Dec'25",n:734},
   {m:"Jan'26",n:766},{m:"Feb'26",n:766},
-  {m:"Mar'26",n:767},{m:"Apr'26",n:793}
+  {m:"Mar'26",n:767},{m:"Apr'26",n:793},
+  {m:"May'26",n:793}
 ];
 let storeCounts=[...STORE_COUNTS_DEFAULT];
-try{const _s=localStorage.getItem('vmm_store_counts');if(_s)storeCounts=JSON.parse(_s);}catch(e){}
+try{const _s=localStorage.getItem('vmm_store_counts');if(_s){const saved=JSON.parse(_s);STORE_COUNTS_DEFAULT.forEach(def=>{if(!saved.find(e=>e.m===def.m))saved.push(def);});storeCounts=saved;}}catch(e){}
 function saveStoreCounts(){try{localStorage.setItem('vmm_store_counts',JSON.stringify(storeCounts));}catch(e){}}
 
 function renderStoreWidget(sM){
