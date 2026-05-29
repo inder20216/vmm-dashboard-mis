@@ -642,6 +642,7 @@ function transformRow(row){
     cp:CRITICAL_PRODUCTS.has(pn.toLowerCase())?'Critical Product':'Others',
     tat:otat===0?'Within TAT':'Beyond TAT',
     dr:String(row['Last Delay reason']||'').trim(),
+    dr2:String(row['Last Sub Reason for Delay']||'').trim(),
     aging:parseFloat(row['Aging'])||0,pn,
     fm:String(row['FM Name-U']||row['FM Name']||'').trim(),
     ho:String(row['HO']||'').trim(),otat,_raw:row};
