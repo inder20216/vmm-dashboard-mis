@@ -104,6 +104,12 @@ body{font-family:"Outfit",sans-serif;background:var(--bg);color:var(--text);min-
 .dr-bar{height:100%;border-radius:2px;background:linear-gradient(90deg,var(--amber),var(--rose))}
 .dr-count{font-size:10.5px;font-weight:700;color:var(--amber);min-width:42px;text-align:right}
 .dr-age{font-size:10px;color:var(--muted);min-width:52px;text-align:right}
+.dr-sub{display:flex;align-items:center;gap:6px;padding:2px 0 2px 22px}
+.dr-sub-name{flex:1;font-size:9.5px;color:#4a7aaa;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-style:italic}
+.dr-sub-bwrap{width:50px;height:3px;background:rgba(26,108,196,0.08);border-radius:2px;overflow:hidden}
+.dr-sub-bar{height:100%;border-radius:2px;background:rgba(234,88,12,0.45)}
+.dr-sub-count{font-size:9.5px;font-weight:700;color:#ea580c;min-width:42px;text-align:right}
+.dr-sub-nc{color:#b0c8e0;font-style:italic}
 
 ::-webkit-scrollbar{width:3px;height:3px}
 ::-webkit-scrollbar-track{background:transparent}
@@ -379,7 +385,7 @@ body{font-family:"Outfit",sans-serif;background:var(--bg);color:var(--text);min-
     <div class="drag-handle" title="Drag to reorder">⠿</div>
     <div class="chart-title">⚠️ Last Delay Reason — Pending Cases</div>
     <div class="chart-sub">Case count &amp; avg aging — pending cases by logged month</div>
-    <div id="delay-list" class="delay-list" style="max-height:200px;overflow-y:auto;margin-top:4px"></div>
+    <div id="delay-list" class="delay-list" style="max-height:320px;overflow-y:auto;margin-top:4px"></div>
   </div>
 
   <div class="chart-card" id="card-ho-lcp" draggable="true">
@@ -938,12 +944,15 @@ function render(){
     {label:"Closed >30d",data:hoGt30Keys.map(k=>hoGt30C[k]||0),backgroundColor:"rgba(234,88,12,0.75)",borderRadius:3}
   ],{dl:{formatter:v=>v>0?v:""}});
 
-  // Delay reason
+  // Delay reason with sub-reasons
   const drMap={};
   base.filter(d=>d.fs!=="Closed"&&(!sM||d.lmy===sM)).forEach(d=>{
     const r=d.dr||"Unspecified";if(!r||r==="Unspecified")return;
-    if(!drMap[r])drMap[r]={count:0,n:0,total:0};
-    drMap[r].count++;const a=parseFloat(d.aging);if(!isNaN(a)&&a>0){drMap[r].n++;drMap[r].total+=a;}
+    if(!drMap[r])drMap[r]={count:0,n:0,total:0,subs:{}};
+    drMap[r].count++;
+    const a=parseFloat(d.aging);if(!isNaN(a)&&a>0){drMap[r].n++;drMap[r].total+=a;}
+    const sr=d.dr2&&d.dr2.trim()?d.dr2.trim():'Not Captured';
+    drMap[r].subs[sr]=(drMap[r].subs[sr]||0)+1;
   });
   const drArr=Object.entries(drMap).filter(([,v])=>v.count>0).sort((a,b)=>b[1].count-a[1].count);
   const totalKnown=drArr.reduce((s,[,v])=>s+v.count,0),maxC=drArr[0]?drArr[0][1].count:1;
@@ -951,7 +960,16 @@ function render(){
     ?'<div style="color:var(--muted);font-size:11px;padding:12px 0;text-align:center">No pending cases for selected filters</div>'
     :drArr.map(([name,v],i)=>{
       const pct=totalKnown>0?(v.count/totalKnown*100).toFixed(1):0,avgAge=v.n>0?(v.total/v.n).toFixed(1):"—";
-      return '<div class="dr"><div class="dr-rank">#'+(i+1)+'</div><div class="dr-name" title="'+name+'">'+name+'</div><div class="dr-bwrap"><div class="dr-bar" style="width:'+(v.count/maxC*100).toFixed(1)+'%"></div></div><div class="dr-count">'+pct+'%</div><div class="dr-age">⏱ '+avgAge+'d avg</div></div>';
+      const subArr=Object.entries(v.subs).sort((a,b)=>b[1]-a[1]);
+      const subHtml=subArr.map(([sn,sc])=>{
+        const sPct=totalKnown>0?(sc/totalKnown*100).toFixed(1):0;
+        const sBarW=v.count>0?(sc/v.count*100).toFixed(1):0;
+        const isNC=sn==='Not Captured';
+        return '<div class="dr-sub"><div class="dr-sub-name '+(isNC?'dr-sub-nc':'')+'" title="'+sn+'">↳ '+sn+'</div>'
+          +'<div class="dr-sub-bwrap"><div class="dr-sub-bar" style="width:'+sBarW+'%"></div></div>'
+          +'<div class="dr-sub-count">'+sPct+'%</div></div>';
+      }).join('');
+      return '<div class="dr"><div class="dr-rank">#'+(i+1)+'</div><div class="dr-name" title="'+name+'">'+name+'</div><div class="dr-bwrap"><div class="dr-bar" style="width:'+(v.count/maxC*100).toFixed(1)+'%"></div></div><div class="dr-count">'+pct+'%</div><div class="dr-age">⏱ '+avgAge+'d avg</div></div>'+subHtml;
     }).join("");
 }
 
