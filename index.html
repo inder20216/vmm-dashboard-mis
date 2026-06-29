@@ -343,6 +343,13 @@ body{font-family:"Outfit",sans-serif;background:var(--bg);color:var(--text);min-
     <canvas id="ch-cpn" height="145"></canvas>
   </div>
 
+  <div class="chart-card" id="card-pt" draggable="true">
+    <div class="drag-handle" title="Drag to reorder">⠿</div>
+    <div class="chart-title">📦 Product Type-wise — Open &amp; Closed Cases</div>
+    <div class="chart-sub" id="pt-sub">Open vs Closed cases by product type — selected month</div>
+    <canvas id="ch-pt" height="170"></canvas>
+  </div>
+
   <div class="chart-card" id="card-fm-lcp" draggable="true">
     <div class="drag-handle" title="Drag to reorder">⠿</div>
     <div class="chart-title">👤 FM-wise — Logged · Closed · Pending</div>
@@ -650,6 +657,7 @@ function transformRow(row){
     dr:String(row['Last Delay reason']||'').trim(),
     dr2:String(row['Last Sub Reason for Delay']||'').trim(),
     aging:parseFloat(row['Aging'])||0,pn,
+    pt:String(row['Product Type']||'').trim()||'Unknown',
     fm:String(row['FM Name-U']||row['FM Name']||'').trim(),
     ho:String(row['HO']||'').trim(),otat,_raw:row};
 }
@@ -885,6 +893,15 @@ function render(){
   const cpNM={};bCP.filter(d=>d.cp==="Critical Product").forEach(d=>{const n=d.pn||"Unknown";if(!cpNM[n])cpNM[n]=[];cpNM[n].push(d);});
   const cpA=Object.entries(cpNM).sort((a,b)=>b[1].length-a[1].length).slice(0,8);
   mkBar("ch-cpn",cpA.map(([n])=>n),L3.map((lbl,i)=>({label:lbl,data:cpA.map(([,r])=>calc(r,sM)[i]),backgroundColor:C3[i],borderRadius:3})));
+
+  // Product Type — Open vs Closed (selected month)
+  document.getElementById("pt-sub").textContent="Open vs Closed cases by product type — "+(sM||"All Months");
+  const ptMap={};base.forEach(d=>{const p=d.pt||"Unknown";if(!ptMap[p])ptMap[p]=[];ptMap[p].push(d);});
+  const ptArr=Object.entries(ptMap).map(([name,recs])=>{const[,cl,pe]=calc(recs,sM);return{name,cl,pe};}).sort((a,b)=>(b.cl+b.pe)-(a.cl+a.pe));
+  mkBar("ch-pt",ptArr.map(r=>r.name),[
+    {label:"Open",data:ptArr.map(r=>r.pe),backgroundColor:"rgba(217,119,6,0.78)",borderRadius:3},
+    {label:"Closed",data:ptArr.map(r=>r.cl),backgroundColor:"rgba(22,163,74,0.78)",borderRadius:3}
+  ]);
 
   // FM-wise Logged · Closed · Pending
   const ALL_FM=[...new Set(RAW.filter(d=>d.fm&&!EXCLUDED_FMS.has(d.fm)).map(d=>d.fm))].sort();
