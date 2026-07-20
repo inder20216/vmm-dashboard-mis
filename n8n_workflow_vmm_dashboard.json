@@ -1,0 +1,597 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "vmm-dashboard",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "c10f56de-cf09-4ddd-a656-abaf54f07345",
+      "name": "Webhook2",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        32,
+        576
+      ],
+      "webhookId": "c9ac88aa-8a7d-4eb6-beaf-c2b8f6d1d6e4"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "days",
+              "daysInterval": 1,
+              "triggerAtHour": 9,
+              "triggerAtMinute": 0
+            }
+          ]
+        }
+      },
+      "id": "a1b2c3d4-1111-4a2b-9c3d-000000000001",
+      "name": "Daily Schedule",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        32,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a1b2c3d4-1111-4a2b-9c3d-000000000002",
+              "name": "report_url",
+              "value": "https://vmm.openmindservices.in/reports/MIS Report - Client.xlsx",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "a1b2c3d4-1111-4a2b-9c3d-000000000003",
+      "name": "Set Report URL",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        256,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.body && $json.body.report_url ? $json.body.report_url : $json.report_url }}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          }
+        }
+      },
+      "id": "6decb1f4-d727-4878-b55e-887ca7ca6c57",
+      "name": "Download Excel1",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        480,
+        576
+      ]
+    },
+    {
+      "parameters": {
+        "options": {
+          "headerRow": true
+        }
+      },
+      "id": "7275918e-cd93-49c1-8c64-7f6746b3437b",
+      "name": "Parse Excel1",
+      "type": "n8n-nodes-base.spreadsheetFile",
+      "typeVersion": 2,
+      "position": [
+        704,
+        576
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "860164e8-e530-4693-b08f-a052001d794b",
+      "name": "Limit to ",
+      "type": "n8n-nodes-base.limit",
+      "typeVersion": 1,
+      "position": [
+        928,
+        576
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "clear",
+        "documentId": {
+          "__rl": true,
+          "value": "1_4fRZwU3vk-sIu0U00hIq9GxKUkm_6DAxG0rJUAXYv0",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Main Sheet",
+          "mode": "name"
+        },
+        "clear": "specificRange",
+        "range": "A2:V1000000"
+      },
+      "id": "0dc97b80-f7a1-4168-a35b-1808d904222c",
+      "name": "Clear Old Data1",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        1152,
+        576
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "nf895OU0LGU9mQ2a",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const EXCEL_COLS = [\n  'Sr. No.', 'Complaint Date', 'Complaint No.', 'Store Code',\n  'Store Name', 'Store Region', 'State', 'FM Name', 'Product Name',\n  'Product Model', 'Product Type', 'Product Vendor', 'Type of Complaint',\n  'Nature of Problem', 'First Remarks', 'TAT', 'Over Due TAT',\n  'Last Delay reason', 'Current Status', 'Date of Closure', 'Aging',\n  'Last Sub Reason for Delay'\n];\n\nreturn $('Parse Excel1').all().map(item => {\n  const filtered = {};\n  EXCEL_COLS.forEach(col => {\n    if (item.json[col] !== undefined) filtered[col] = item.json[col];\n  });\n  return { json: filtered };\n});\n"
+      },
+      "id": "b8b185fd-8b57-4271-a69f-e50400535d5a",
+      "name": "Restore All Rows1",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1376,
+        576
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1_4fRZwU3vk-sIu0U00hIq9GxKUkm_6DAxG0rJUAXYv0",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Main Sheet",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Sr. No.",
+              "displayName": "Sr. No.",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Complaint Date",
+              "displayName": "Complaint Date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Complaint No.",
+              "displayName": "Complaint No.",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Store Code",
+              "displayName": "Store Code",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Store Name",
+              "displayName": "Store Name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Store Region",
+              "displayName": "Store Region",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "State",
+              "displayName": "State",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "FM Name",
+              "displayName": "FM Name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Product Name",
+              "displayName": "Product Name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Product Model",
+              "displayName": "Product Model",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Product Type",
+              "displayName": "Product Type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Product Vendor",
+              "displayName": "Product Vendor",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Type of Complaint",
+              "displayName": "Type of Complaint",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Nature of Problem",
+              "displayName": "Nature of Problem",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "First Remarks",
+              "displayName": "First Remarks",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "TAT",
+              "displayName": "TAT",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Over Due TAT",
+              "displayName": "Over Due TAT",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Last Delay reason",
+              "displayName": "Last Delay reason",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Current Status",
+              "displayName": "Current Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Date of Closure",
+              "displayName": "Date of Closure",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Aging",
+              "displayName": "Aging",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "FM Name-U",
+              "displayName": "FM Name-U",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false,
+              "removed": true
+            },
+            {
+              "id": "Zone",
+              "displayName": "Zone",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false,
+              "removed": true
+            },
+            {
+              "id": "HO",
+              "displayName": "HO",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "355a2d81-05c8-4843-9f37-edcc8514f4e7",
+      "name": "Write to Sheet1",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        1600,
+        576
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "nf895OU0LGU9mQ2a",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "destinationFieldName": "rows",
+        "options": {}
+      },
+      "id": "5ea4c423-e29c-4bbf-a650-3b9b0f56dfa4",
+      "name": "Aggregate1",
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        1824,
+        576
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: true, rows_written: $json.rows.length }) }}",
+        "options": {}
+      },
+      "id": "c8d00acb-8599-4945-8aed-b353394603d1",
+      "name": "Respond1",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        2048,
+        576
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook2": {
+      "main": [
+        [
+          {
+            "node": "Download Excel1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Daily Schedule": {
+      "main": [
+        [
+          {
+            "node": "Set Report URL",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Report URL": {
+      "main": [
+        [
+          {
+            "node": "Download Excel1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download Excel1": {
+      "main": [
+        [
+          {
+            "node": "Parse Excel1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Excel1": {
+      "main": [
+        [
+          {
+            "node": "Limit to ",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Limit to ": {
+      "main": [
+        [
+          {
+            "node": "Clear Old Data1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Clear Old Data1": {
+      "main": [
+        [
+          {
+            "node": "Restore All Rows1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Restore All Rows1": {
+      "main": [
+        [
+          {
+            "node": "Write to Sheet1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Write to Sheet1": {
+      "main": [
+        [
+          {
+            "node": "Aggregate1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate1": {
+      "main": [
+        [
+          {
+            "node": "Respond1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {
+    "Webhook2": [
+      {
+        "headers": {
+          "content-type": "application/json"
+        },
+        "params": {},
+        "query": {},
+        "body": {
+          "report_url": "https://vmm.openmindservices.in/reports/MIS Report - Client.xlsx"
+        },
+        "webhookUrl": "https://automation.openmindhelpline.com/webhook/vmm-dashboard",
+        "executionMode": "production"
+      }
+    ]
+  },
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "8442590b0e55dbd54e355747c7c925a75dfcef3563273e7cbd717163cbe23470"
+  }
+}
