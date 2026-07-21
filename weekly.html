@@ -141,11 +141,6 @@ table.wtbl tr:hover td{background:rgba(26,108,196,0.025)}
     <div class="chart-sub">Logged · Closed · Pending for critical products only</div>
     <canvas id="ch-crit" height="160"></canvas>
   </div>
-  <div class="chart-card">
-    <div class="chart-title">📦 Non-Critical Products — Weekly</div>
-    <div class="chart-sub">Logged · Closed · Pending for non-critical products</div>
-    <canvas id="ch-others" height="160"></canvas>
-  </div>
 </div>
 
 <div class="tbl-card">
@@ -384,7 +379,7 @@ function render(){
   const empty='<div style="padding:16px;text-align:center;color:var(--muted);font-size:11px;background:var(--card);border-radius:var(--radius);border:1px solid var(--border)">Select a month to view weekly analysis</div>';
   if(!sM){
     document.getElementById('week-row').innerHTML=empty;
-    ['ch-overall','ch-crit','ch-others'].forEach(id=>{if(CH[id])CH[id].destroy();});
+    ['ch-overall','ch-crit'].forEach(id=>{if(CH[id])CH[id].destroy();});
     document.getElementById('pt-table').innerHTML='';
     document.getElementById('cp-table').innerHTML='';
     return;
@@ -420,7 +415,6 @@ function render(){
 
   mkBar('ch-overall',wlabels,L3.map((lbl,i)=>({label:lbl,data:allM.map(m=>[m.logged,m.closed,m.pending][i]),backgroundColor:C3[i],borderRadius:3})));
   mkBar('ch-crit',wlabels,L3.map((lbl,i)=>({label:lbl,data:critM.map(m=>[m.logged,m.closed,m.pending][i]),backgroundColor:C3[i],borderRadius:3})));
-  mkBar('ch-others',wlabels,L3.map((lbl,i)=>({label:lbl,data:othM.map(m=>[m.logged,m.closed,m.pending][i]),backgroundColor:C3[i],borderRadius:3})));
 
   // Product Type table
   const allPTs=[...new Set(base.map(d=>d.pt).filter(Boolean))].sort();
