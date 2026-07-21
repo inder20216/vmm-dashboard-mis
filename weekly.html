@@ -104,7 +104,6 @@ table.wtbl tr:hover td{background:rgba(26,108,196,0.025)}
 </div>
 
 <div class="filters">
-  <div class="fg"><label>📅 Month &amp; Year</label><select id="f-month"></select></div>
   <div class="fg"><label>🗺️ Zone</label><select id="f-zone"></select></div>
   <div class="fg"><label>🏪 Store</label>
     <div class="ss-wrap" id="ssw-store">
@@ -263,22 +262,12 @@ function makeSearchSel(wrpId,btnId,popId,inpId,optsId,hidId,vsId,ph){
 }
 
 function initFilters(){
-  const ALL_MONTHS=[...new Set(RAW.map(d=>d.lmy).filter(Boolean))].sort((a,b)=>m2n(a)-m2n(b));
-  const JAN26=m2n("Jan'26");
-  const FM=ALL_MONTHS.filter(m=>m2n(m)>=JAN26);
-  const mSel=document.getElementById('f-month');
-  mSel.innerHTML="<option value=''>Select Month</option>";
-  FM.forEach(m=>mSel.innerHTML+='<option value="'+m+'">'+m+'</option>');
-  const _now=new Date(),_prev=new Date(_now.getFullYear(),_now.getMonth()-1,1);
-  const _pmy=MON[_prev.getMonth()]+"'"+String(_prev.getFullYear()).slice(2);
-  mSel.value=FM.includes(_pmy)?_pmy:(FM[FM.length-1]||'');
   const zSel=document.getElementById('f-zone');
   zSel.innerHTML='<option value="">All Zones</option>';
   [...new Set(RAW.map(d=>d.zone).filter(Boolean))].sort().forEach(z=>zSel.innerHTML+='<option value="'+z+'">'+z+'</option>');
   storeSearch=makeSearchSel('ssw-store','ssb-store','ssp-store','ssi-store','sso-store','f-store','ssv-store','All Stores');
   vendorSearch=makeSearchSel('ssw-vendor','ssb-vendor','ssp-vendor','ssi-vendor','sso-vendor','f-vendor','ssv-vendor','All Vendors');
   updateStoreList();
-  document.getElementById('f-month').addEventListener('change',render);
   document.getElementById('f-zone').addEventListener('change',()=>{storeSearch.reset();vendorSearch.reset();updateStoreList();render();});
   document.getElementById('f-store').addEventListener('change',()=>{vendorSearch.reset();updateVendorList();render();});
   document.getElementById('f-vendor').addEventListener('change',render);
@@ -365,7 +354,7 @@ function mkBar(id,labels,datasets){
 function buildTable(rows,weeks){
   if(!rows.length)return'<div style="padding:16px;text-align:center;color:var(--muted);font-size:11px">No data for selected filters</div>';
   let h='<table class="wtbl"><thead><tr><th class="nm" rowspan="2">Name</th>';
-  weeks.forEach(w=>h+=`<th colspan="3" class="wk-head wk-sep">${w.name}<div style="font-size:7.5px;font-weight:400;letter-spacing:0;text-transform:none;margin-top:1px">${MON[w.sd.getMonth()]} ${w.s}–${w.e}</div></th>`);
+  weeks.forEach(w=>h+=`<th colspan="3" class="wk-head wk-sep">${w.name}<div style="font-size:7.5px;font-weight:400;letter-spacing:0;text-transform:none;margin-top:1px">${w.dateRange}</div></th>`);
   h+='</tr><tr>';
   weeks.forEach(()=>h+='<th class="wk-sep" style="color:var(--sky)">Lgd</th><th style="color:var(--green)">Cls</th><th style="color:var(--amber)">Pend</th>');
   h+='</tr></thead><tbody>';
@@ -391,13 +380,17 @@ function buildTable(rows,weeks){
 }
 
 function render(){
-  const sM=document.getElementById('f-month').value;
   const base=getBase();
+  const weeks=getRolling4Weeks();
+  const critBase=base.filter(d=>d.cp==='Critical Product');
+  const wlabels=weeks.map(w=>w.name);
   const WK_COLORS=['#7c3aed','#1a6cc4','#16a34a','#d97706'];
+  const dateSpan=weeks[0].dateRange.split(' – ')[0]+' – '+weeks[3].dateRange.split(' – ')[1];
 
-  // Rolling 4-week KPI cards — always shown, independent of month filter
-  const rolling=getRolling4Weeks();
-  document.getElementById('week-row').innerHTML=rolling.map((w,i)=>{
+  document.getElementById('week-hsub').textContent='Last 4 weeks: '+dateSpan+' · Logged / Closed / Pending';
+
+  // KPI cards
+  document.getElementById('week-row').innerHTML=weeks.map((w,i)=>{
     const m=wm(base,w.sd,w.ed);
     const c=WK_COLORS[i];
     return`<div class="week-card" style="border-top-color:${c}">
@@ -410,44 +403,28 @@ function render(){
     </div>`;
   }).join('');
 
-  const noMonth='<div style="padding:16px;text-align:center;color:var(--muted);font-size:11px">Select a month to view charts &amp; tables</div>';
-  if(!sM){
-    ['ch-overall','ch-crit'].forEach(id=>{if(CH[id])CH[id].destroy();});
-    document.getElementById('pt-table').innerHTML=noMonth;
-    document.getElementById('cp-table').innerHTML='';
-    document.getElementById('week-hsub').textContent='Last 4 weeks · Logged / Closed / Pending';
-    return;
-  }
-  const parts=sM.split("'"),year=2000+parseInt(parts[1]),month=MMAP[parts[0]];
-  const weeks=getWeeks(year,month);
-  const critBase=base.filter(d=>d.cp==='Critical Product');
-  const wlabels=weeks.map(w=>w.name);
-
-  document.getElementById('week-hsub').textContent='Last 4 weeks (KPI) · '+sM+' monthly breakdown (charts & tables)';
-
-  // Charts
+  // Charts — same 4 rolling weeks
   const allM=weeks.map(w=>wm(base,w.sd,w.ed));
   const critM=weeks.map(w=>wm(critBase,w.sd,w.ed));
-
   mkBar('ch-overall',wlabels,L3.map((lbl,i)=>({label:lbl,data:allM.map(m=>[m.logged,m.closed,m.pending][i]),backgroundColor:C3[i],borderRadius:3})));
   mkBar('ch-crit',wlabels,L3.map((lbl,i)=>({label:lbl,data:critM.map(m=>[m.logged,m.closed,m.pending][i]),backgroundColor:C3[i],borderRadius:3})));
 
-  // Product Type table
+  // Product Type table — same 4 rolling weeks
   const allPTs=[...new Set(base.map(d=>d.pt).filter(Boolean))].sort();
   const ptRows=allPTs.map(pt=>{
     const recs=base.filter(d=>d.pt===pt);
     return{name:pt,metrics:weeks.map(w=>wm(recs,w.sd,w.ed))};
   }).sort((a,b)=>b.metrics.reduce((s,m)=>s+m.logged,0)-a.metrics.reduce((s,m)=>s+m.logged,0));
-  document.getElementById('pt-sub').textContent='Logged · Closed · Pending per week — '+sM;
+  document.getElementById('pt-sub').textContent='Logged · Closed · Pending — '+dateSpan;
   document.getElementById('pt-table').innerHTML=buildTable(ptRows,weeks);
 
-  // Critical Product table
+  // Critical Product table — same 4 rolling weeks
   const cpRows=[...CRITICAL_PRODUCTS].map(key=>{
     const recs=critBase.filter(d=>d.pn.toLowerCase()===key);
     const total=weeks.reduce((s,w)=>s+wm(recs,w.sd,w.ed).logged,0);
     return{name:key.split(' ').map(w=>w.charAt(0).toUpperCase()+w.slice(1)).join(' '),metrics:weeks.map(w=>wm(recs,w.sd,w.ed)),total};
   }).filter(r=>r.total>0).sort((a,b)=>b.total-a.total);
-  document.getElementById('cp-sub').textContent='Logged · Closed · Pending per week — critical products — '+sM;
+  document.getElementById('cp-sub').textContent='Critical products — '+dateSpan;
   document.getElementById('cp-table').innerHTML=buildTable(cpRows,weeks);
 }
 
