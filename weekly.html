@@ -315,14 +315,14 @@ function fmtDate(d){return MON[d.getMonth()]+' '+d.getDate();}
 
 function getRolling4Weeks(){
   const now=new Date();
-  const today=new Date(now.getFullYear(),now.getMonth(),now.getDate(),23,59,59);
-  const dow=now.getDay(); // 0=Sun
+  const dow=now.getDay(); // 0=Sun,1=Mon,...
   const daysToMon=dow===0?6:dow-1;
+  // Monday of the current (possibly partial) week — always exclude it
   const thisMon=new Date(now.getFullYear(),now.getMonth(),now.getDate()-daysToMon);
-  return [3,2,1,0].map((offset,i)=>{
+  // W1..W4 are the 4 complete Mon-Sun weeks ending last Sunday
+  return [4,3,2,1].map((offset,i)=>{
     const sd=new Date(thisMon.getFullYear(),thisMon.getMonth(),thisMon.getDate()-offset*7,0,0,0);
-    const edRaw=new Date(sd.getFullYear(),sd.getMonth(),sd.getDate()+6,23,59,59);
-    const ed=edRaw>today?today:edRaw;
+    const ed=new Date(sd.getFullYear(),sd.getMonth(),sd.getDate()+6,23,59,59);
     return{name:'Week '+(i+1),sd,ed,dateRange:fmtDate(sd)+' – '+fmtDate(ed)};
   });
 }
