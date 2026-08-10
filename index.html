@@ -1652,12 +1652,14 @@ function buildEffRow(base, sM, mn, groupFn, labelFn){
     const pending=sM?recs.filter(d=>m2n(d.lmy)<=mn&&(!d.cmy||m2n(d.cmy)>mn)).length:recs.filter(d=>!d.cmy).length;
     const closedRecs=sM?recs.filter(d=>d.cmy===sM&&d.fs==='Closed'):recs.filter(d=>d.fs==='Closed');
     const withinTAT=closedRecs.filter(d=>d.tat==='Within TAT').length;
+    const beyondTAT=closedRecs.filter(d=>d.tat==='Beyond TAT').length;
     const tatRate=closedRecs.length>0?Math.round(withinTAT/closedRecs.length*100):100;
+    const overdueRate=closedRecs.length>0?Math.round(beyondTAT/closedRecs.length*100):0;
     const pendRecs=sM?recs.filter(d=>m2n(d.lmy)<=mn&&(!d.cmy||m2n(d.cmy)>mn)):recs.filter(d=>!d.cmy);
     const avgAging=pendRecs.length>0?+(pendRecs.reduce((s,d)=>s+d.aging,0)/pendRecs.length).toFixed(1):0;
     const gt30=pendRecs.filter(d=>d.aging>=31).length;
     const closureRate=logged>0?Math.min(100,Math.round(closed/logged*100)):0;
-    rows.push({key,label:labelFn?labelFn(key,recs):key,logged,closed,pending,closureRate,tatRate,avgAging,gt30,score:0,extra:recs[0]});
+    rows.push({key,label:labelFn?labelFn(key,recs):key,logged,closed,pending,closureRate,tatRate,overdueRate,avgAging,gt30,score:0,extra:recs[0]});
   });
   const maxMap={aging:Math.max(...rows.map(r=>r.avgAging),1),gt30:Math.max(...rows.map(r=>r.gt30),1)};
   rows.forEach(r=>{r.score=computeEffScore(r,maxMap);});
@@ -1701,7 +1703,8 @@ function renderEffTable(tblId, rows, sortState, onSort, extraCols){
     {key:'closed',label:'Closed',sortable:true},
     {key:'pending',label:'Pending',sortable:true},
     {key:'closureRate',label:'Closure %',sortable:true},
-    {key:'tatRate',label:'TAT %',sortable:true},
+    {key:'tatRate',label:'Within TAT %',sortable:true},
+    {key:'overdueRate',label:'Overdue TAT %',sortable:true},
     {key:'avgAging',label:'Avg Aging',sortable:true},
     {key:'gt30',label:'>30d',sortable:true},
     {key:'score',label:'Score',sortable:true},
@@ -1727,6 +1730,7 @@ function renderEffTable(tblId, rows, sortState, onSort, extraCols){
       +'<td style="font-weight:600;color:#d97706">'+r.pending.toLocaleString()+'</td>'
       +'<td><span class="eff-pct '+pctClass(r.closureRate)+'">'+r.closureRate+'%</span></td>'
       +'<td><span class="eff-pct '+pctClass(r.tatRate)+'">'+r.tatRate+'%</span></td>'
+      +'<td><span class="eff-pct '+(r.overdueRate<=20?'hi':r.overdueRate<=50?'mid':'lo')+'">'+r.overdueRate+'%</span></td>'
       +'<td style="color:'+(r.avgAging>20?'#e11d48':r.avgAging>10?'#d97706':'#16a34a')+'">'+r.avgAging+'d</td>'
       +'<td style="color:'+(r.gt30>10?'#e11d48':r.gt30>3?'#d97706':'#16a34a')+'">'+r.gt30+'</td>'
       +'<td style="min-width:110px"><span class="eff-pill '+scC+'">'+scoreDot(sc)+' '+sc+'/100</span>'
