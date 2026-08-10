@@ -613,6 +613,7 @@ const MMAP = {Jan:0,Feb:1,Mar:2,Apr:3,May:4,Jun:5,Jul:6,Aug:7,Sep:8,Oct:9,Nov:10
 let RAW = [];
 let customKPIs = [], customCharts = [];
 let selectedKPIColor = '#1a6cc4';
+let zoneStateMap = {};
 let storeSearch, vendorSearch;
 
 // UTILS
@@ -810,6 +811,46 @@ function mkLine(id,labels,datasets){
     scales:{x:{...SB},y:{...SB,beginAtZero:true}}}});
 }
 
+// ZONE HTML TOOLTIP
+(function(){
+  const el=document.createElement('div');el.id='zone-tip';
+  el.style.cssText='position:fixed;pointer-events:none;z-index:9000;display:none;background:#fff;border:1px solid rgba(26,108,196,0.2);border-radius:11px;box-shadow:0 8px 28px rgba(13,43,78,0.16);padding:13px 15px;font-family:Outfit,sans-serif;min-width:260px;max-width:360px';
+  document.body.appendChild(el);
+})();
+function zoneExternalTooltip(ctx){
+  const{chart,tooltip}=ctx;
+  const el=document.getElementById('zone-tip');if(!el)return;
+  if(tooltip.opacity===0){el.style.display='none';return;}
+  const zone=chart.data.labels[tooltip.dataPoints[0].dataIndex];
+  const states=zoneStateMap[zone]||[];
+  const pts=tooltip.dataPoints;
+  let h='<div style="font-size:12.5px;font-weight:800;color:#0d2b4e;margin-bottom:8px;padding-bottom:7px;border-bottom:1px solid rgba(26,108,196,0.1)">'+zone+'</div>';
+  h+='<table style="width:100%;border-collapse:collapse;margin-bottom:10px">';
+  pts.forEach(p=>{
+    const c=p.dataset.backgroundColor;
+    h+='<tr><td style="font-size:11px;color:#4a7aaa;padding:2px 0">'+p.dataset.label+'</td><td style="font-size:11px;font-weight:700;color:#0d2b4e;text-align:right;padding:2px 0">'+p.formattedValue+'</td></tr>';
+  });
+  h+='</table>';
+  if(states.length){
+    h+='<div style="font-size:9px;font-weight:700;color:#1a6cc4;text-transform:uppercase;letter-spacing:0.6px;margin-bottom:6px">📍 State-wise</div>';
+    h+='<table style="width:100%;border-collapse:collapse">';
+    h+='<tr style="border-bottom:1.5px solid rgba(26,108,196,0.12)"><th style="font-size:9px;color:#4a7aaa;font-weight:700;padding:3px 5px 4px 2px;text-align:left">State</th><th style="font-size:9px;color:#1a6cc4;font-weight:700;padding:3px 5px;text-align:right">Logged</th><th style="font-size:9px;color:#16a34a;font-weight:700;padding:3px 5px;text-align:right">Closed</th><th style="font-size:9px;color:#d97706;font-weight:700;padding:3px 5px;text-align:right">Pending</th></tr>';
+    states.forEach(function(s,i){
+      const bg=i%2===0?'rgba(26,108,196,0.03)':'';
+      h+='<tr style="background:'+bg+'"><td style="font-size:10.5px;color:#0d2b4e;padding:4px 5px 4px 2px">'+s.st+'</td><td style="font-size:10.5px;font-weight:600;color:#1a6cc4;padding:4px 5px;text-align:right">'+s.lg+'</td><td style="font-size:10.5px;font-weight:600;color:#16a34a;padding:4px 5px;text-align:right">'+s.cl+'</td><td style="font-size:10.5px;font-weight:600;color:#d97706;padding:4px 5px;text-align:right">'+s.pe+'</td></tr>';
+    });
+    h+='</table>';
+  }
+  el.innerHTML=h;el.style.display='block';
+  const r=chart.canvas.getBoundingClientRect();
+  let x=r.left+tooltip.caretX+14,y=r.top+tooltip.caretY-10;
+  const tw=el.offsetWidth||280,th=el.offsetHeight||220;
+  if(x+tw>window.innerWidth-12)x=r.left+tooltip.caretX-tw-14;
+  if(y+th>window.innerHeight-12)y=window.innerHeight-th-12;
+  if(y<8)y=8;
+  el.style.left=x+'px';el.style.top=y+'px';
+}
+
 // CALC
 function calc(recs,sM){
   if(!sM){const lg=recs.length,cl=recs.filter(d=>d.fs==="Closed").length,pe=recs.filter(d=>d.fs!=="Closed").length;return[lg,cl,pe,0,pe];}
@@ -937,8 +978,8 @@ function render(){
   mkBar("ch-store",stArr.map(([s])=>s),[{label:"Logged",data:stArr.map(([,c])=>c),backgroundColor:"rgba(167,139,250,0.85)",borderRadius:3}],
     {dl:{formatter:v=>v>0?v:"",color:"#fff",font:{weight:"700",size:11}},extra:{plugins:{legend:{display:false}}},x:{...SB,ticks:{...TX,maxRotation:38,minRotation:30}}});
 
-  // Zone — with state-wise tooltip breakdown
-  const zoneStateMap={};
+  // Zone — with state-wise HTML tooltip breakdown
+  zoneStateMap={};
   ALL_ZONES.forEach(z=>{
     const zRecs=base.filter(d=>d.zone===z);
     const states=[...new Set(zRecs.map(d=>String(d._raw['State']||'').trim()).filter(Boolean))].sort();
@@ -948,18 +989,7 @@ function render(){
     }).sort((a,b)=>b.lg-a.lg);
   });
   mkBar("ch-zone",ALL_ZONES,L3.map((lbl,i)=>({label:lbl,data:ALL_ZONES.map(z=>calc(base.filter(d=>d.zone===z),sM)[i]),backgroundColor:C3[i],borderRadius:3})),{
-    tooltip:{...TIP,
-      callbacks:{
-        afterBody:function(items){
-          const zone=items[0].chart.data.labels[items[0].dataIndex];
-          const states=zoneStateMap[zone]||[];
-          if(!states.length)return[];
-          const lines=['','📍 State-wise (L / C / P):'];
-          states.forEach(s=>lines.push('  '+s.st+':  '+s.lg+' / '+s.cl+' / '+s.pe));
-          return lines;
-        }
-      }
-    }
+    tooltip:{enabled:false,external:zoneExternalTooltip}
   });
 
   // HO-wise Logged · Closed · Pending
