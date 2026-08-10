@@ -791,7 +791,7 @@ function mkBar(id,labels,datasets,opts={}){
   CH[id]=new Chart(el.getContext('2d'),{type:"bar",data:{labels,datasets},options:{
     responsive:true,layout:{padding:{top:16}},
     plugins:{legend:{display:true,labels:{color:"#0d2b4e",font:{family:"Outfit",size:9},usePointStyle:true,pointStyle:"rect",padding:9,boxWidth:8,boxHeight:8}},
-      tooltip:TIP,datalabels:{color:"#0d2b4e",font:{family:"Outfit",size:8,weight:"700"},anchor:"end",align:"end",offset:1,formatter:v=>v>0?v.toLocaleString():"",...(opts.dl||{})}},
+      tooltip:opts.tooltip||TIP,datalabels:{color:"#0d2b4e",font:{family:"Outfit",size:8,weight:"700"},anchor:"end",align:"end",offset:1,formatter:v=>v>0?v.toLocaleString():"",...(opts.dl||{})}},
     scales:{x:{...SB,...(opts.x||{})},y:{...SB,beginAtZero:true,...(opts.y||{})}},
     ...(opts.extra||{})}});
 }
@@ -937,8 +937,30 @@ function render(){
   mkBar("ch-store",stArr.map(([s])=>s),[{label:"Logged",data:stArr.map(([,c])=>c),backgroundColor:"rgba(167,139,250,0.85)",borderRadius:3}],
     {dl:{formatter:v=>v>0?v:"",color:"#fff",font:{weight:"700",size:11}},extra:{plugins:{legend:{display:false}}},x:{...SB,ticks:{...TX,maxRotation:38,minRotation:30}}});
 
-  // Zone
-  mkBar("ch-zone",ALL_ZONES,L3.map((lbl,i)=>({label:lbl,data:ALL_ZONES.map(z=>calc(base.filter(d=>d.zone===z),sM)[i]),backgroundColor:C3[i],borderRadius:3})));
+  // Zone — with state-wise tooltip breakdown
+  const zoneStateMap={};
+  ALL_ZONES.forEach(z=>{
+    const zRecs=base.filter(d=>d.zone===z);
+    const states=[...new Set(zRecs.map(d=>String(d._raw['State']||'').trim()).filter(Boolean))].sort();
+    zoneStateMap[z]=states.map(st=>{
+      const stRecs=zRecs.filter(d=>String(d._raw['State']||'').trim()===st);
+      const[lg,cl,pe]=calc(stRecs,sM);return{st,lg,cl,pe};
+    }).sort((a,b)=>b.lg-a.lg);
+  });
+  mkBar("ch-zone",ALL_ZONES,L3.map((lbl,i)=>({label:lbl,data:ALL_ZONES.map(z=>calc(base.filter(d=>d.zone===z),sM)[i]),backgroundColor:C3[i],borderRadius:3})),{
+    tooltip:{...TIP,
+      callbacks:{
+        afterBody:function(items){
+          const zone=items[0].chart.data.labels[items[0].dataIndex];
+          const states=zoneStateMap[zone]||[];
+          if(!states.length)return[];
+          const lines=['','📍 State-wise (L / C / P):'];
+          states.forEach(s=>lines.push('  '+s.st+':  '+s.lg+' / '+s.cl+' / '+s.pe));
+          return lines;
+        }
+      }
+    }
+  });
 
   // HO-wise Logged · Closed · Pending
   const ALL_HO=[...new Set(RAW.filter(d=>d.ho).map(d=>d.ho))].sort();
