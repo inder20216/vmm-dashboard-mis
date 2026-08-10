@@ -1633,7 +1633,8 @@ function computeEffScore(r, maxMap){
   const cl = Math.min(r.closureRate, 100);
   const tat = Math.min(r.tatRate, 100);
   const ag = maxMap.aging>0 ? Math.max(0,100-(r.avgAging/maxMap.aging)*100) : 100;
-  const g30 = maxMap.gt30>0 ? Math.max(0,100-(r.gt30/maxMap.gt30)*100) : 100;
+  // Use >30d % of pending (volume-neutral) instead of raw count
+  const g30 = maxMap.gt30Rate>0 ? Math.max(0,100-(r.gt30Rate/maxMap.gt30Rate)*100) : 100;
   return Math.min(100, Math.round(cl*0.35 + tat*0.25 + ag*0.20 + g30*0.20));
 }
 
@@ -1658,10 +1659,12 @@ function buildEffRow(base, sM, mn, groupFn, labelFn){
     const pendRecs=sM?recs.filter(d=>m2n(d.lmy)<=mn&&(!d.cmy||m2n(d.cmy)>mn)):recs.filter(d=>!d.cmy);
     const avgAging=pendRecs.length>0?+(pendRecs.reduce((s,d)=>s+d.aging,0)/pendRecs.length).toFixed(1):0;
     const gt30=pendRecs.filter(d=>d.aging>=31).length;
+    // >30d as % of pending — fairer for high-volume FMs
+    const gt30Rate=pendRecs.length>0?Math.round(gt30/pendRecs.length*100):0;
     const closureRate=logged>0?Math.min(100,Math.round(closed/logged*100)):0;
-    rows.push({key,label:labelFn?labelFn(key,recs):key,logged,closed,pending,closureRate,tatRate,overdueRate,avgAging,gt30,score:0,extra:recs[0]});
+    rows.push({key,label:labelFn?labelFn(key,recs):key,logged,closed,pending,closureRate,tatRate,overdueRate,avgAging,gt30,gt30Rate,score:0,extra:recs[0]});
   });
-  const maxMap={aging:Math.max(...rows.map(r=>r.avgAging),1),gt30:Math.max(...rows.map(r=>r.gt30),1)};
+  const maxMap={aging:Math.max(...rows.map(r=>r.avgAging),1),gt30Rate:Math.max(...rows.map(r=>r.gt30Rate),1)};
   rows.forEach(r=>{r.score=computeEffScore(r,maxMap);});
   return rows;
 }
@@ -1732,7 +1735,7 @@ function renderEffTable(tblId, rows, sortState, onSort, extraCols){
       +'<td><span class="eff-pct '+pctClass(r.tatRate)+'">'+r.tatRate+'%</span></td>'
       +'<td><span class="eff-pct '+(r.overdueRate<=20?'hi':r.overdueRate<=50?'mid':'lo')+'">'+r.overdueRate+'%</span></td>'
       +'<td style="color:'+(r.avgAging>20?'#e11d48':r.avgAging>10?'#d97706':'#16a34a')+'">'+r.avgAging+'d</td>'
-      +'<td style="color:'+(r.gt30>10?'#e11d48':r.gt30>3?'#d97706':'#16a34a')+'">'+r.gt30+'</td>'
+      +'<td style="color:'+(r.gt30Rate>40?'#e11d48':r.gt30Rate>20?'#d97706':'#16a34a')+'">'+r.gt30+' <span style="font-size:9px;opacity:0.7">('+r.gt30Rate+'%)</span></td>'
       +'<td style="min-width:110px"><span class="eff-pill '+scC+'">'+scoreDot(sc)+' '+sc+'/100</span>'
       +'<div class="eff-bar-wrap"><div class="eff-bar" style="width:'+sc+'%;background:'+barColor+'"></div></div></td>'
       +'</tr>';
