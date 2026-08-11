@@ -142,38 +142,6 @@ body{font-family:"Outfit",sans-serif;background:var(--bg);color:var(--text);min-
 @media(max-width:1100px){.kpi-row{grid-template-columns:repeat(3,1fr)}.r2,.r2b{grid-template-columns:1fr}}
 @media(max-width:700px){.kpi-row{grid-template-columns:1fr 1fr}}
 
-/* FLOATING STORE WIDGET */
-#store-widget{
-  position:fixed;bottom:24px;right:24px;z-index:900;
-  background:#ffffff;border:1px solid rgba(8,145,178,0.25);
-  border-radius:14px;padding:14px 16px 12px;
-  box-shadow:0 8px 32px rgba(13,43,78,0.18);
-  min-width:270px;cursor:default;
-  animation:floatIn .4s cubic-bezier(.22,1,.36,1);
-}
-@keyframes floatIn{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
-#store-widget.hidden{display:none}
-.sw-controls{position:absolute;top:8px;right:8px;display:flex;gap:3px}
-.sw-ctrl{background:none;border:none;font-size:12px;color:#4a7aaa;cursor:pointer;line-height:1;padding:2px 5px;border-radius:4px}
-.sw-ctrl:hover{background:rgba(26,108,196,0.08)}
-#store-widget.minimised .sw-body{display:none}
-#store-widget.minimised{min-width:0}
-.sw-title{font-size:9px;font-weight:700;color:#4a7aaa;text-transform:uppercase;
-  letter-spacing:0.8px;margin-bottom:8px;font-family:"Outfit",sans-serif}
-.sw-main{display:flex;align-items:flex-end;gap:4px;margin-bottom:4px}
-.sw-num{font-size:28px;font-weight:800;color:#0d2b4e;line-height:1;font-family:"Outfit",sans-serif;letter-spacing:-0.5px}
-.sw-badge{font-size:9.5px;font-weight:700;padding:2px 7px;border-radius:8px;margin-bottom:4px}
-.sw-badge.up{background:rgba(22,163,74,0.1);color:#16a34a}
-.sw-badge.dn{background:rgba(225,29,72,0.1);color:#e11d48}
-.sw-badge.fl{background:rgba(74,122,170,0.1);color:#4a7aaa}
-.sw-lbl{font-size:9px;color:#4a7aaa;font-family:"Outfit",sans-serif}
-.sw-spark{display:flex;align-items:flex-end;gap:3px;height:28px;margin-top:2px}
-.sw-spark span{flex:1;border-radius:2px 2px 0 0;background:rgba(8,145,178,0.2);min-width:5px;position:relative}
-.sw-spark span.sw-active{background:#0891b2}
-.sw-spark span:hover::after{content:attr(data-tip);position:absolute;bottom:110%;left:50%;
-  transform:translateX(-50%);background:#0d2b4e;color:#fff;font-size:8px;padding:2px 5px;
-  border-radius:4px;white-space:nowrap;pointer-events:none;font-family:"Outfit",sans-serif}
-.sw-month{font-size:9px;color:#4a7aaa;margin-top:5px;font-family:"Outfit",sans-serif;text-align:center}
 
 
 
@@ -559,26 +527,6 @@ body{font-family:"Outfit",sans-serif;background:var(--bg);color:var(--text);min-
   </div>
 </div>
 
-<!-- STORE MONTH MODAL -->
-<div id="store-month-overlay" style="display:none;position:fixed;inset:0;background:rgba(13,43,78,0.5);z-index:2000;align-items:center;justify-content:center">
-  <div style="background:#fff;border-radius:14px;padding:28px 32px;max-width:320px;width:100%;box-shadow:0 20px 50px rgba(13,43,78,0.25)">
-    <div style="font-size:14px;font-weight:800;color:#0d2b4e;margin-bottom:4px" id="sm-modal-title">Add Month</div>
-    <div style="font-size:11px;color:#4a7aaa;margin-bottom:18px">Enter the month and store count</div>
-    <div style="margin-bottom:12px">
-      <label style="font-size:10px;font-weight:700;color:#0d2b4e;text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:4px">Month</label>
-      <input id="sm-month-input" type="text" placeholder="e.g. May'26" style="width:100%;box-sizing:border-box;padding:9px 12px;border:1.5px solid rgba(26,108,196,0.25);border-radius:8px;font-size:13px;font-family:Outfit,sans-serif;outline:none;color:#0d2b4e">
-    </div>
-    <div style="margin-bottom:18px">
-      <label style="font-size:10px;font-weight:700;color:#0d2b4e;text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:4px">Store Count</label>
-      <input id="sm-count-input" type="number" min="0" placeholder="e.g. 800" style="width:100%;box-sizing:border-box;padding:9px 12px;border:1.5px solid rgba(26,108,196,0.25);border-radius:8px;font-size:13px;font-family:Outfit,sans-serif;outline:none;color:#0d2b4e">
-    </div>
-    <div id="sm-error" style="font-size:11px;color:#e11d48;min-height:16px;margin-bottom:10px"></div>
-    <div style="display:flex;gap:8px">
-      <button onclick="closeStoreModal()" style="flex:1;padding:9px;border:1px solid rgba(26,108,196,0.2);border-radius:8px;background:#f0f6ff;color:#4a7aaa;font-family:Outfit,sans-serif;font-weight:700;font-size:12px;cursor:pointer">Cancel</button>
-      <button onclick="saveStoreModal()" style="flex:1;padding:9px;border:none;border-radius:8px;background:#1a6cc4;color:#fff;font-family:Outfit,sans-serif;font-weight:700;font-size:12px;cursor:pointer">Save</button>
-    </div>
-  </div>
-</div>
 
 <!-- ANALYTICS BUILDER MODAL -->
 <div class="bmodal-overlay" id="bmodal" onclick="if(event.target===this)closeBuilder()">
@@ -751,7 +699,6 @@ function applyData(jsonData){
   const ftEl=document.getElementById('fetch-time');
   if(ftEl)ftEl.textContent=new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
   initFilters();render();
-  renderStoreWidget(document.getElementById('f-month').value);
 }
 
 function refreshData(){
@@ -812,7 +759,7 @@ function makeSearchSel(wrpId,btnId,popId,inpId,optsId,hidId,valSpanId,placeholde
 }
 
 // FILTERS
-function onFilterChange(){render();renderCustomKPIs();renderCustomCharts();renderStoreWidget(document.getElementById('f-month').value);renderEfficiency();renderLandlordScope();}
+function onFilterChange(){render();renderCustomKPIs();renderCustomCharts();renderEfficiency();renderLandlordScope();}
 
 function updateStoreList(){
   const zone=document.getElementById('f-zone').value;
@@ -1121,75 +1068,6 @@ function render(){
     }).join("");
 }
 
-// STORE WIDGET
-// STORE COUNTS — manually maintained list (not derived from data)
-const STORE_COUNTS_DEFAULT=[
-  {m:"Nov'25",n:734},{m:"Dec'25",n:734},
-  {m:"Jan'26",n:766},{m:"Feb'26",n:766},
-  {m:"Mar'26",n:767},{m:"Apr'26",n:793},
-  {m:"May'26",n:793}
-];
-let storeCounts=[...STORE_COUNTS_DEFAULT];
-try{const _s=localStorage.getItem('vmm_store_counts');if(_s){const saved=JSON.parse(_s);STORE_COUNTS_DEFAULT.forEach(def=>{if(!saved.find(e=>e.m===def.m))saved.push(def);});storeCounts=saved;}}catch(e){}
-function saveStoreCounts(){try{localStorage.setItem('vmm_store_counts',JSON.stringify(storeCounts));}catch(e){}}
-
-function renderStoreWidget(sM){
-  // Find entry for selected month; fallback to last entry
-  let entry=sM?storeCounts.find(e=>e.m===sM):null;
-  if(!entry)entry=storeCounts[storeCounts.length-1];
-  const curM=entry?entry.m:'—';
-  const cur=entry?entry.n:0;
-  document.getElementById('sw-num').textContent=cur.toLocaleString();
-  document.getElementById('sw-month-lbl').textContent=curM+' — Active Stores';
-  // Render table
-  const tbl=document.getElementById('sw-table-wrap');if(!tbl)return;
-  tbl.innerHTML='<table style="width:100%;border-collapse:collapse;margin-top:6px;font-size:10.5px;font-family:Outfit,sans-serif"><tbody>'
-    +storeCounts.map(function(e,i){
-      const active=e.m===curM;
-      const bg=active?'rgba(255,160,60,0.13)':i%2===0?'rgba(255,140,40,0.04)':'';
-      return '<tr style="background:'+bg+'">'
-        +'<td style="padding:5px 6px;color:'+(active?'#d97706':'#0d2b4e')+';font-weight:'+(active?'700':'400')+'">'+e.m+'</td>'
-        +'<td style="text-align:right;padding:5px 6px;font-weight:'+(active?'700':'500')+';color:'+(active?'#d97706':'#0d2b4e')+'">'+e.n.toLocaleString()+'</td>'
-        +'<td style="padding:2px 4px;text-align:center"><button onclick="editStoreMonthCount('+i+')" style="background:none;border:none;cursor:pointer;font-size:10px;color:#4a7aaa;padding:2px 3px;border-radius:3px;line-height:1" title="Edit">✏️</button></td>'
-        +'</tr>';
-    }).join('')
-    +'</tbody></table>';
-}
-let _smEditIdx=null;
-function openStoreModal(title,month,count,editIdx){
-  _smEditIdx=editIdx!=null?editIdx:null;
-  document.getElementById('sm-modal-title').textContent=title;
-  document.getElementById('sm-month-input').value=month||'';
-  document.getElementById('sm-month-input').readOnly=editIdx!=null;
-  document.getElementById('sm-month-input').style.background=editIdx!=null?'#f5f8fc':'';
-  document.getElementById('sm-count-input').value=count!=null?count:'';
-  document.getElementById('sm-error').textContent='';
-  document.getElementById('store-month-overlay').style.display='flex';
-  setTimeout(()=>document.getElementById(editIdx!=null?'sm-count-input':'sm-month-input').focus(),100);
-}
-function closeStoreModal(){document.getElementById('store-month-overlay').style.display='none';_smEditIdx=null;}
-function saveStoreModal(){
-  const m=document.getElementById('sm-month-input').value.trim();
-  const nRaw=document.getElementById('sm-count-input').value;
-  const n=parseInt(String(nRaw).replace(/,/g,''),10);
-  if(!m){document.getElementById('sm-error').textContent='Month is required.';return;}
-  if(isNaN(n)||n<0){document.getElementById('sm-error').textContent='Enter a valid count.';return;}
-  if(_smEditIdx!=null){
-    storeCounts[_smEditIdx].n=n;
-  }else{
-    if(storeCounts.find(e=>e.m===m)){document.getElementById('sm-error').textContent=m+' already exists — use ✏️ to edit.';return;}
-    storeCounts.push({m,n});
-  }
-  saveStoreCounts();closeStoreModal();
-  renderStoreWidget(document.getElementById('f-month').value);
-}
-document.addEventListener('keydown',e=>{if(e.key==='Enter'&&document.getElementById('store-month-overlay').style.display==='flex')saveStoreModal();});
-function editStoreMonthCount(idx){
-  requirePin(function(){const e=storeCounts[idx];openStoreModal('Edit Month',e.m,e.n,idx);});
-}
-function addStoreMonth(){
-  requirePin(function(){openStoreModal('Add Month','',null,null);});
-}
 
 // DOWNLOAD
 function toggleDlMenu(){
@@ -1916,22 +1794,6 @@ loadChartOrder();
 </script>
 
 
-<!-- FLOATING STORE WIDGET -->
-<div id="store-widget">
-  <div class="sw-controls">
-    <button class="sw-ctrl" title="Minimise" onclick="document.getElementById('store-widget').classList.toggle('minimised');this.textContent=document.getElementById('store-widget').classList.contains('minimised')?'▲':'▼'">▼</button>
-    <button class="sw-ctrl" title="Close" onclick="document.getElementById('store-widget').classList.add('hidden')">✕</button>
-  </div>
-  <div class="sw-title">🏪 Active Stores</div>
-  <div class="sw-body">
-    <div class="sw-main">
-      <div class="sw-num" id="sw-num">—</div>
-    </div>
-    <div class="sw-lbl" id="sw-month-lbl">— Active Stores</div>
-    <div id="sw-table-wrap" style="max-height:240px;overflow-y:auto;margin-top:2px"></div>
-    <button onclick="addStoreMonth()" style="margin-top:8px;width:100%;border:1.5px dashed rgba(26,108,196,0.35);background:rgba(26,108,196,0.04);color:#1a6cc4;border-radius:6px;padding:5px;font-size:10px;font-family:Outfit,sans-serif;font-weight:700;cursor:pointer">+ Add Month</button>
-  </div>
-</div>
 
 <!-- FOOTER -->
 <div style="text-align:center;padding:18px 20px;margin-top:6px;border-top:1px solid rgba(26,108,196,0.1);background:var(--card)">
