@@ -460,6 +460,30 @@ body{font-family:"Outfit",sans-serif;background:var(--bg);color:var(--text);min-
 
 </div>
 
+<!-- LANDLORD SCOPE ANALYSIS -->
+<div class="eff-section" id="ls-section">
+  <div class="eff-hdr" id="ls-hdr" onclick="toggleLS()">
+    <div class="eff-hdr-title">
+      <span style="font-size:16px">🏢</span>
+      Landlord Scope — Product Analysis
+      <span style="font-size:9px;font-weight:500;color:#4a7aaa;background:rgba(26,108,196,0.07);border-radius:5px;padding:2px 7px">Open · Closed · TAT · Aging by Product</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px">
+      <span style="font-size:11px;color:#4a7aaa" id="ls-chevron">▼ Expand</span>
+    </div>
+  </div>
+  <div class="eff-body" id="ls-body" style="display:none">
+    <div style="padding:12px 16px 4px;font-size:11px;font-weight:700;color:#4a7aaa" id="ls-period"></div>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;padding:8px 16px 16px" id="ls-stats"></div>
+    <div style="padding:0 16px 18px">
+      <div style="font-size:12px;font-weight:700;color:#0d2b4e;margin-bottom:10px">📦 Product-wise Details</div>
+      <div class="eff-table-wrap">
+        <table class="eff-tbl" id="ls-tbl"><thead></thead><tbody></tbody></table>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- EFFICIENCY REPORTS -->
 <div class="eff-section" id="eff-section">
   <div class="eff-hdr" id="eff-hdr" onclick="toggleEff()">
@@ -474,12 +498,7 @@ body{font-family:"Outfit",sans-serif;background:var(--bg);color:var(--text);min-
   </div>
   <div class="eff-body" id="eff-body" style="display:none">
     <div class="eff-summary" id="eff-summary"></div>
-    <div class="eff-tabs">
-      <button class="eff-tab active" id="et-fm" onclick="switchEff('fm')">👤 FM-wise</button>
-      <button class="eff-tab" id="et-store" onclick="switchEff('store')">🏪 Store-wise</button>
-    </div>
     <div id="ep-fm"><div class="eff-table-wrap"><table class="eff-tbl" id="eff-fm-tbl"><thead></thead><tbody></tbody></table></div></div>
-    <div id="ep-store" style="display:none"><div class="eff-table-wrap"><table class="eff-tbl" id="eff-store-tbl"><thead></thead><tbody></tbody></table></div></div>
   </div>
 </div>
 
@@ -716,7 +735,7 @@ function transformRow(row){
     dr:String(row['Last Delay reason']||'').trim(),
     dr2:String(row['Last Sub Reason for Delay']||'').trim(),
     aging:parseFloat(row['Aging'])||0,pn,
-    pt:String(row['Product Type']||'').trim()||'Unknown',
+    pt:String(row['New Product Type']||'').trim()||'Unknown',
     fm:String(row['FM Name-U']||row['FM Name']||'').trim(),
     ho:String(row['HO']||'').trim(),otat,_raw:row};
 }
@@ -793,7 +812,7 @@ function makeSearchSel(wrpId,btnId,popId,inpId,optsId,hidId,valSpanId,placeholde
 }
 
 // FILTERS
-function onFilterChange(){render();renderCustomKPIs();renderCustomCharts();renderStoreWidget(document.getElementById('f-month').value);renderEfficiency();}
+function onFilterChange(){render();renderCustomKPIs();renderCustomCharts();renderStoreWidget(document.getElementById('f-month').value);renderEfficiency();renderLandlordScope();}
 
 function updateStoreList(){
   const zone=document.getElementById('f-zone').value;
@@ -1344,7 +1363,7 @@ function getDimVal(d,dim){
     case'state':return String(d._raw['State']||'Unknown');case'region':return String(d._raw['Store Region']||'Unknown');
     case'complaint_type':return String(d._raw['Type of Complaint']||'Unknown');
     case'nature':return String(d._raw['Nature of Problem']||'Unknown');
-    case'product_type':return String(d._raw['Product Type']||'Unknown');
+    case'product_type':return String(d._raw['New Product Type']||'Unknown');
     default:return'Unknown';
   }
 }
@@ -1604,142 +1623,59 @@ function loadChartOrder(){
 // =====================================================
 // EFFICIENCY REPORTS
 // =====================================================
-let effOpen = false;
-let effTab = 'fm';
-let effSortFM = {col:'score', dir:'desc'};
-let effSortStore = {col:'score', dir:'desc'};
+let effOpen=false;
+let effSortFM={col:'combined',dir:'desc'};
+let _effFMRows=[];
 
 function toggleEff(){
   effOpen=!effOpen;
   document.getElementById('eff-body').style.display=effOpen?'':'none';
   document.getElementById('eff-chevron').textContent=effOpen?'▲ Collapse':'▼ Expand';
   document.getElementById('eff-hdr').classList.toggle('open',effOpen);
-  if(effOpen) renderEfficiency();
+  if(effOpen)renderEfficiency();
 }
-function switchEff(tab){
-  effTab=tab;
-  document.getElementById('ep-fm').style.display=tab==='fm'?'':'none';
-  document.getElementById('ep-store').style.display=tab==='store'?'':'none';
-  document.getElementById('et-fm').className='eff-tab'+(tab==='fm'?' active':'');
-  document.getElementById('et-store').className='eff-tab'+(tab==='store'?' active':'');
-}
-
-function scoreColor(s){return s>=70?'g':s>=45?'y':'r';}
-function scoreDot(s){return s>=70?'🟢':s>=45?'🟡':'🔴';}
 function pctClass(v){return v>=70?'hi':v>=45?'mid':'lo';}
 function medal(i){return i===0?'🥇':i===1?'🥈':i===2?'🥉':'<span class="eff-rank">'+(i+1)+'</span>';}
 
-function computeEffScore(r, maxMap){
-  const cl = Math.min(r.closureRate, 100);
-  const tat = Math.min(r.tatRate, 100);
-  const ag = maxMap.aging>0 ? Math.max(0,100-(r.avgAging/maxMap.aging)*100) : 100;
-  // Use >30d % of pending (volume-neutral) instead of raw count
-  const g30 = maxMap.gt30Rate>0 ? Math.max(0,100-(r.gt30Rate/maxMap.gt30Rate)*100) : 100;
-  return Math.min(100, Math.round(cl*0.35 + tat*0.25 + ag*0.20 + g30*0.20));
+function buildEffRow(recs,sM,mn){
+  const logged=sM?recs.filter(d=>d.lmy===sM).length:recs.length;
+  const closed=sM?recs.filter(d=>d.lmy===sM&&d.cmy===sM&&d.fs==='Closed').length:recs.filter(d=>d.fs==='Closed'&&d.lmy===d.cmy).length;
+  const pending=sM?recs.filter(d=>m2n(d.lmy)<=mn&&(!d.cmy||m2n(d.cmy)>mn)).length:recs.filter(d=>!d.cmy).length;
+  const closedRecs=sM?recs.filter(d=>d.cmy===sM&&d.fs==='Closed'):recs.filter(d=>d.fs==='Closed');
+  const withinTAT=closedRecs.filter(d=>d.tat==='Within TAT').length;
+  const beyondTAT=closedRecs.filter(d=>d.tat==='Beyond TAT').length;
+  const tatRate=closedRecs.length>0?Math.round(withinTAT/closedRecs.length*100):0;
+  const overdueRate=closedRecs.length>0?Math.round(beyondTAT/closedRecs.length*100):0;
+  const pendRecs=sM?recs.filter(d=>m2n(d.lmy)<=mn&&(!d.cmy||m2n(d.cmy)>mn)):recs.filter(d=>!d.cmy);
+  const avgAging=pendRecs.length>0?+(pendRecs.reduce((s,d)=>s+d.aging,0)/pendRecs.length).toFixed(1):0;
+  const gt30=pendRecs.filter(d=>d.aging>=31).length;
+  const gt30Rate=pendRecs.length>0?Math.round(gt30/pendRecs.length*100):0;
+  const closureRate=logged>0?Math.min(100,Math.round(closed/logged*100)):0;
+  const combined=closureRate+tatRate; // hidden sort key: sum of the two main metrics
+  return{logged,closed,pending,closureRate,tatRate,overdueRate,avgAging,gt30,gt30Rate,combined};
 }
 
-function buildEffRow(base, sM, mn, groupFn, labelFn){
-  const groups={};
-  base.forEach(d=>{
-    const k=groupFn(d);if(!k)return;
-    if(!groups[k])groups[k]=[];groups[k].push(d);
-  });
-  const rows=[];
-  Object.entries(groups).forEach(([key,recs])=>{
-    const logged=sM?recs.filter(d=>d.lmy===sM).length:recs.length;
-    if(logged<3)return; // skip micro entries
-    // Closure % = same month logged AND closed ÷ logged (always 0–100%)
-    const closed=sM?recs.filter(d=>d.lmy===sM&&d.cmy===sM&&d.fs==='Closed').length:recs.filter(d=>d.fs==='Closed'&&d.lmy===d.cmy).length;
-    const pending=sM?recs.filter(d=>m2n(d.lmy)<=mn&&(!d.cmy||m2n(d.cmy)>mn)).length:recs.filter(d=>!d.cmy).length;
-    const closedRecs=sM?recs.filter(d=>d.cmy===sM&&d.fs==='Closed'):recs.filter(d=>d.fs==='Closed');
-    const withinTAT=closedRecs.filter(d=>d.tat==='Within TAT').length;
-    const beyondTAT=closedRecs.filter(d=>d.tat==='Beyond TAT').length;
-    const tatRate=closedRecs.length>0?Math.round(withinTAT/closedRecs.length*100):100;
-    const overdueRate=closedRecs.length>0?Math.round(beyondTAT/closedRecs.length*100):0;
-    const pendRecs=sM?recs.filter(d=>m2n(d.lmy)<=mn&&(!d.cmy||m2n(d.cmy)>mn)):recs.filter(d=>!d.cmy);
-    const avgAging=pendRecs.length>0?+(pendRecs.reduce((s,d)=>s+d.aging,0)/pendRecs.length).toFixed(1):0;
-    const gt30=pendRecs.filter(d=>d.aging>=31).length;
-    // >30d as % of pending — fairer for high-volume FMs
-    const gt30Rate=pendRecs.length>0?Math.round(gt30/pendRecs.length*100):0;
-    const closureRate=logged>0?Math.min(100,Math.round(closed/logged*100)):0;
-    rows.push({key,label:labelFn?labelFn(key,recs):key,logged,closed,pending,closureRate,tatRate,overdueRate,avgAging,gt30,gt30Rate,score:0,extra:recs[0]});
-  });
-  const maxMap={aging:Math.max(...rows.map(r=>r.avgAging),1),gt30Rate:Math.max(...rows.map(r=>r.gt30Rate),1)};
-  rows.forEach(r=>{r.score=computeEffScore(r,maxMap);});
-  return rows;
+function effRowHtml(r,i,nameHtml){
+  const c=r.combined;
+  return'<td style="text-align:center;font-size:12px;width:36px">'+medal(i)+'</td>'
+    +nameHtml
+    +'<td style="font-weight:600;color:#1a6cc4">'+r.logged.toLocaleString()+'</td>'
+    +'<td style="font-weight:600;color:#16a34a">'+r.closed.toLocaleString()+'</td>'
+    +'<td style="font-weight:600;color:#d97706">'+r.pending.toLocaleString()+'</td>'
+    +'<td><span class="eff-pct '+pctClass(r.closureRate)+'">'+r.closureRate+'%</span></td>'
+    +'<td><span class="eff-pct '+pctClass(r.tatRate)+'">'+r.tatRate+'%</span></td>'
+    +'<td><span class="eff-pct '+(r.overdueRate<=20?'hi':r.overdueRate<=50?'mid':'lo')+'">'+r.overdueRate+'%</span></td>'
+    +'<td style="color:'+(r.avgAging>20?'#e11d48':r.avgAging>10?'#d97706':'#16a34a')+'">'+r.avgAging+'d</td>'
+    +'<td style="color:'+(r.gt30Rate>40?'#e11d48':r.gt30Rate>20?'#d97706':'#16a34a')+'">'+r.gt30+' <span style="font-size:9px;opacity:0.7">('+r.gt30Rate+'%)</span></td>';
 }
 
-function sortRows(rows, sortState){
-  const{col,dir}=sortState;
-  return [...rows].sort((a,b)=>{
-    let va=a[col],vb=b[col];
-    if(typeof va==='string')va=va.toLowerCase(),vb=vb.toLowerCase();
-    return dir==='desc'?(vb>va?1:vb<va?-1:0):(va>vb?1:va<vb?-1:0);
-  });
-}
-
-function renderEffSummary(fmRows, storeRows){
-  const el=document.getElementById('eff-summary');if(!el)return;
-  const fmSorted=[...fmRows].sort((a,b)=>b.score-a.score);
-  const stSorted=[...storeRows].sort((a,b)=>b.score-a.score);
-  const cards=[
-    {emoji:'🥇',lbl:'Top FM',name:fmSorted[0]?.label||'—',score:fmSorted[0]?.score,bg:'rgba(22,163,74,0.08)',border:'rgba(22,163,74,0.2)',c:'#16a34a'},
-    {emoji:'⚠️',lbl:'FM Needs Attention',name:fmSorted[fmSorted.length-1]?.label||'—',score:fmSorted[fmSorted.length-1]?.score,bg:'rgba(225,29,72,0.07)',border:'rgba(225,29,72,0.18)',c:'#e11d48'},
-    {emoji:'🏆',lbl:'Top Store',name:stSorted[0]?.label||'—',score:stSorted[0]?.score,bg:'rgba(26,108,196,0.07)',border:'rgba(26,108,196,0.18)',c:'#1a6cc4'},
-    {emoji:'⚠️',lbl:'Store Needs Attention',name:stSorted[stSorted.length-1]?.label||'—',score:stSorted[stSorted.length-1]?.score,bg:'rgba(217,119,6,0.08)',border:'rgba(217,119,6,0.2)',c:'#d97706'},
-  ];
-  el.innerHTML=cards.map(c=>'<div class="eff-hero" style="background:'+c.bg+';border-color:'+c.border+'">'
-    +'<div class="eff-hero-lbl" style="color:'+c.c+'">'+c.emoji+' '+c.lbl+'</div>'
-    +'<div class="eff-hero-name">'+c.name+'</div>'
-    +(c.score!=null?'<div class="eff-hero-score" style="color:'+c.c+'">Score: '+c.score+'/100</div>':'')
-    +'</div>').join('');
-}
-
-function renderEffTable(tblId, rows, sortState, onSort, extraCols){
-  const tbl=document.getElementById(tblId);if(!tbl)return;
-  const sorted=sortRows(rows,sortState);
-  const cols=[
-    {key:'rank',label:'#',sortable:false},
-    {key:'label',label:'Name',sortable:true},
-    ...extraCols,
-    {key:'logged',label:'Logged',sortable:true},
-    {key:'closed',label:'Closed',sortable:true},
-    {key:'pending',label:'Pending',sortable:true},
-    {key:'closureRate',label:'Closure %',sortable:true},
-    {key:'tatRate',label:'Within TAT %',sortable:true},
-    {key:'overdueRate',label:'Overdue TAT %',sortable:true},
-    {key:'avgAging',label:'Avg Aging',sortable:true},
-    {key:'gt30',label:'>30d',sortable:true},
-    {key:'score',label:'Score',sortable:true},
-  ];
-  // Header
-  tbl.querySelector('thead').innerHTML='<tr>'+cols.map(c=>{
-    if(!c.sortable)return'<th style="text-align:left;width:36px">#</th>';
-    const active=sortState.col===c.key;
-    const cls=active?(sortState.dir==='desc'?'sort-desc':'sort-asc'):'';
-    return'<th class="'+cls+'" onclick="('+onSort.toString()+')('+"'"+c.key+"'"+')" title="Sort by '+c.label+'">'+c.label+'</th>';
-  }).join('')+'</tr>';
-  // Body
-  tbl.querySelector('tbody').innerHTML=sorted.map((r,i)=>{
-    const sc=r.score;const scC=scoreColor(sc);
-    const barColor=sc>=70?'#16a34a':sc>=45?'#d97706':'#e11d48';
-    const extra=extraCols.map(c=>'<td style="color:#4a7aaa;font-size:10.5px">'+r[c.key]+'</td>').join('');
-    return'<tr>'
-      +'<td style="text-align:center;font-size:12px;width:36px">'+medal(i)+'</td>'
-      +'<td style="font-weight:700;color:#0d2b4e;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+r.label+'">'+r.label+'</td>'
-      +extra
-      +'<td style="font-weight:600;color:#1a6cc4">'+r.logged.toLocaleString()+'</td>'
-      +'<td style="font-weight:600;color:#16a34a">'+r.closed.toLocaleString()+'</td>'
-      +'<td style="font-weight:600;color:#d97706">'+r.pending.toLocaleString()+'</td>'
-      +'<td><span class="eff-pct '+pctClass(r.closureRate)+'">'+r.closureRate+'%</span></td>'
-      +'<td><span class="eff-pct '+pctClass(r.tatRate)+'">'+r.tatRate+'%</span></td>'
-      +'<td><span class="eff-pct '+(r.overdueRate<=20?'hi':r.overdueRate<=50?'mid':'lo')+'">'+r.overdueRate+'%</span></td>'
-      +'<td style="color:'+(r.avgAging>20?'#e11d48':r.avgAging>10?'#d97706':'#16a34a')+'">'+r.avgAging+'d</td>'
-      +'<td style="color:'+(r.gt30Rate>40?'#e11d48':r.gt30Rate>20?'#d97706':'#16a34a')+'">'+r.gt30+' <span style="font-size:9px;opacity:0.7">('+r.gt30Rate+'%)</span></td>'
-      +'<td style="min-width:110px"><span class="eff-pill '+scC+'">'+scoreDot(sc)+' '+sc+'/100</span>'
-      +'<div class="eff-bar-wrap"><div class="eff-bar" style="width:'+sc+'%;background:'+barColor+'"></div></div></td>'
-      +'</tr>';
-  }).join('');
+function toggleFMStores(fmKey){
+  const sub=document.getElementById('eff-sub-'+fmKey);
+  const arrow=document.getElementById('eff-arr-'+fmKey);
+  if(!sub)return;
+  const open=sub.style.display==='none'||sub.style.display==='';
+  sub.style.display=open?'table-row':'none';
+  if(arrow)arrow.textContent=open?'▾':'▸';
 }
 
 function renderEfficiency(){
@@ -1747,35 +1683,230 @@ function renderEfficiency(){
   const sM=document.getElementById('f-month').value;
   const base=getBase();const mn=m2n(sM);
 
-  // FM rows
-  const fmRows=buildEffRow(base,sM,mn,
-    d=>d.fm&&!EXCLUDED_FMS.has(d.fm)?d.fm:null, null);
+  // Build FM list
+  const fmGroups={};
+  base.forEach(d=>{const k=d.fm&&!EXCLUDED_FMS.has(d.fm)?d.fm:null;if(!k)return;if(!fmGroups[k])fmGroups[k]=[];fmGroups[k].push(d);});
+  _effFMRows=Object.entries(fmGroups)
+    .map(([fm,recs])=>({key:fm,label:fm,...buildEffRow(recs,sM,mn),recs}))
+    .filter(r=>r.logged>=3);
 
-  // Store rows — include zone
-  const storeRows=buildEffRow(base,sM,mn,
-    d=>d.store||null,
-    (key,recs)=>key);
-  // Attach zone to store rows
-  storeRows.forEach(r=>{
-    const sample=base.find(d=>d.store===r.key);
-    r.zone=sample?sample.zone:'—';
-  });
+  // Sort
+  const{col,dir}=effSortFM;
+  _effFMRows.sort((a,b)=>{let va=a[col],vb=b[col];if(typeof va==='string'){va=va.toLowerCase();vb=vb.toLowerCase();}return dir==='desc'?(vb>va?1:vb<va?-1:0):(va>vb?1:va<vb?-1:0);});
 
-  renderEffSummary(fmRows,storeRows);
+  // Summary cards — sorted by combined (Closure% + Within TAT%)
+  const fmS=[..._effFMRows].sort((a,b)=>b.combined-a.combined);
+  const top=fmS[0],low=fmS[fmS.length-1];
+  const sumEl=document.getElementById('eff-summary');
+  if(sumEl&&top)sumEl.innerHTML=[
+    {emoji:'🥇',lbl:'Top Performer',fm:top,bg:'rgba(22,163,74,0.08)',border:'rgba(22,163,74,0.2)',c:'#16a34a'},
+    {emoji:'⚠️',lbl:'Needs Attention',fm:low,bg:'rgba(225,29,72,0.07)',border:'rgba(225,29,72,0.18)',c:'#e11d48'},
+  ].map(card=>'<div class="eff-hero" style="background:'+card.bg+';border:1px solid '+card.border+'">'
+    +'<div class="eff-hero-lbl" style="color:'+card.c+'">'+card.emoji+' '+card.lbl+'</div>'
+    +'<div class="eff-hero-name">'+card.fm.label+'</div>'
+    +'<div class="eff-hero-score" style="color:'+card.c+'">Closure '+card.fm.closureRate+'% &nbsp;·&nbsp; Within TAT '+card.fm.tatRate+'%</div>'
+    +'</div>').join('');
 
-  renderEffTable('eff-fm-tbl', fmRows, effSortFM,
-    function(col){
-      if(effSortFM.col===col)effSortFM.dir=effSortFM.dir==='desc'?'asc':'desc';
-      else{effSortFM.col=col;effSortFM.dir='desc';}
-      renderEfficiency();
-    }, []);
+  // Table header
+  const COLS=['#','FM Name','Logged','Closed','Pending','Closure %','Within TAT %','Overdue TAT %','Avg Aging','>30d'];
+  const SORT_KEYS=[null,'label','logged','closed','pending','closureRate','tatRate','overdueRate','avgAging','gt30Rate'];
+  const tbl=document.getElementById('eff-fm-tbl');if(!tbl)return;
+  tbl.querySelector('thead').innerHTML='<tr>'+COLS.map((lbl,i)=>{
+    if(!SORT_KEYS[i])return'<th style="text-align:left;width:36px">#</th>';
+    const k=SORT_KEYS[i];const active=effSortFM.col===k;
+    const cls=active?(effSortFM.dir==='desc'?'sort-desc':'sort-asc'):'';
+    return'<th class="'+cls+'" onclick="effSortFM.dir=(effSortFM.col===\''+k+'\'&&effSortFM.dir===\'desc\')?\'asc\':\'desc\';effSortFM.col=\''+k+'\';renderEfficiency()">'+lbl+'</th>';
+  }).join('')+'</tr>';
 
-  renderEffTable('eff-store-tbl', storeRows, effSortStore,
-    function(col){
-      if(effSortStore.col===col)effSortStore.dir=effSortStore.dir==='desc'?'asc':'desc';
-      else{effSortStore.col=col;effSortStore.dir='desc';}
-      renderEfficiency();
-    }, [{key:'zone',label:'Zone',sortable:true}]);
+  // Table body — each FM row + hidden store sub-row
+  const safeKey=k=>k.replace(/[^a-z0-9]/gi,'_');
+  tbl.querySelector('tbody').innerHTML=_effFMRows.map((r,i)=>{
+    const sk=safeKey(r.key);
+    // Store drill-down rows
+    const stGroups={};
+    r.recs.forEach(d=>{if(!d.store)return;if(!stGroups[d.store])stGroups[d.store]=[];stGroups[d.store].push(d);});
+    const stRows=Object.entries(stGroups)
+      .map(([store,srecs])=>({store,zone:srecs[0]?.zone||'—',...buildEffRow(srecs,sM,mn)}))
+      .filter(s=>s.logged>=1)
+      .sort((a,b)=>b.combined-a.combined);
+    const stHtml=stRows.map((s,si)=>{
+      return'<tr style="background:'+(si%2===0?'rgba(26,108,196,0.025)':'rgba(26,108,196,0.01)')+'">'
+        +'<td></td>'
+        +'<td style="padding-left:22px;font-size:10.5px;color:#1a3a5c;white-space:nowrap">🏪 '+s.store+'</td>'
+        +'<td style="font-size:10.5px;color:#4a7aaa">'+s.zone+'</td>'
+        +'<td style="font-size:10.5px;color:#1a6cc4;font-weight:600">'+s.logged+'</td>'
+        +'<td style="font-size:10.5px;color:#16a34a;font-weight:600">'+s.closed+'</td>'
+        +'<td style="font-size:10.5px;color:#d97706;font-weight:600">'+s.pending+'</td>'
+        +'<td style="font-size:10.5px"><span class="eff-pct '+pctClass(s.closureRate)+'">'+s.closureRate+'%</span></td>'
+        +'<td style="font-size:10.5px"><span class="eff-pct '+pctClass(s.tatRate)+'">'+s.tatRate+'%</span></td>'
+        +'<td style="font-size:10.5px"><span class="eff-pct '+(s.overdueRate<=20?'hi':s.overdueRate<=50?'mid':'lo')+'">'+s.overdueRate+'%</span></td>'
+        +'<td style="font-size:10.5px;color:'+(s.avgAging>20?'#e11d48':s.avgAging>10?'#d97706':'#16a34a')+'">'+s.avgAging+'d</td>'
+        +'<td style="font-size:10.5px;color:'+(s.gt30Rate>40?'#e11d48':s.gt30Rate>20?'#d97706':'#16a34a')+'">'+s.gt30+' <span style="opacity:0.7">('+s.gt30Rate+'%)</span></td>'
+        +'</tr>';
+    }).join('');
+
+    const nameTd='<td style="font-weight:700;color:#0d2b4e;cursor:pointer;white-space:nowrap" onclick="toggleFMStores(\''+sk+'\')">'
+      +'<span id="eff-arr-'+sk+'" style="display:inline-block;width:14px;font-size:10px;color:#4a7aaa">▸</span>'
+      +r.label+'</td>';
+
+    const subHdr='<tr style="background:rgba(26,108,196,0.05);border-top:1.5px solid rgba(26,108,196,0.12)">'
+      +'<td></td><td style="font-size:9px;font-weight:700;color:#4a7aaa;padding-left:22px;text-transform:uppercase;letter-spacing:0.5px">Store</td>'
+      +'<td style="font-size:9px;font-weight:700;color:#4a7aaa;text-transform:uppercase">Zone</td>'
+      +'<td style="font-size:9px;font-weight:700;color:#4a7aaa;text-transform:uppercase">Logged</td>'
+      +'<td style="font-size:9px;font-weight:700;color:#4a7aaa;text-transform:uppercase">Closed</td>'
+      +'<td style="font-size:9px;font-weight:700;color:#4a7aaa;text-transform:uppercase">Pending</td>'
+      +'<td style="font-size:9px;font-weight:700;color:#4a7aaa;text-transform:uppercase">Closure %</td>'
+      +'<td style="font-size:9px;font-weight:700;color:#4a7aaa;text-transform:uppercase">Within TAT</td>'
+      +'<td style="font-size:9px;font-weight:700;color:#4a7aaa;text-transform:uppercase">Overdue TAT</td>'
+      +'<td style="font-size:9px;font-weight:700;color:#4a7aaa;text-transform:uppercase">Avg Aging</td>'
+      +'<td style="font-size:9px;font-weight:700;color:#4a7aaa;text-transform:uppercase">>30d</td>'
+      +'</tr>';
+
+    return'<tr style="border-bottom:1px solid rgba(26,108,196,0.06)">'+effRowHtml(r,i,nameTd)+'</tr>'
+      +'<tr id="eff-sub-'+sk+'" style="display:none"><td colspan="10" style="padding:0;border-bottom:2px solid rgba(26,108,196,0.1)">'
+      +'<table style="width:100%;border-collapse:collapse">'+subHdr+stHtml+'</table>'
+      +'</td></tr>';
+  }).join('');
+}
+
+// =====================================================
+// LANDLORD SCOPE ANALYSIS
+// =====================================================
+let lsOpen=false;
+
+function toggleLS(){
+  lsOpen=!lsOpen;
+  document.getElementById('ls-body').style.display=lsOpen?'':'none';
+  document.getElementById('ls-chevron').textContent=lsOpen?'▲ Collapse':'▼ Expand';
+  document.getElementById('ls-hdr').classList.toggle('open',lsOpen);
+  if(lsOpen)renderLandlordScope();
+}
+
+function renderLandlordScope(){
+  if(!lsOpen)return;
+  const sM=document.getElementById('f-month').value;
+  const base=getBase();const mn=m2n(sM);
+  const lsRecs=base.filter(d=>d.vendor==='Landlord Scope');
+
+  if(!lsRecs.length){
+    document.getElementById('ls-period').textContent='📅 Showing: '+(sM||'All Months');
+    document.getElementById('ls-stats').innerHTML='<div style="grid-column:1/-1;text-align:center;padding:20px;color:#4a7aaa;font-size:12px">No Landlord Scope records for selected filters</div>';
+    const tbl=document.getElementById('ls-tbl');
+    tbl.querySelector('thead').innerHTML='';
+    tbl.querySelector('tbody').innerHTML='<tr><td style="text-align:center;padding:20px;color:#4a7aaa;font-size:12px">No data</td></tr>';
+    return;
+  }
+
+  // Group by Product Name
+  const pnMap={};
+  lsRecs.forEach(d=>{const k=d.pn||'Unknown';if(!pnMap[k])pnMap[k]=[];pnMap[k].push(d);});
+
+  const rows=Object.entries(pnMap).map(([pn,recs])=>{
+    const[lg,cl,pe]=calc(recs,sM);
+    const closedRecs=sM?recs.filter(d=>d.cmy===sM&&d.fs==='Closed'):recs.filter(d=>d.fs==='Closed');
+    const withinTAT=closedRecs.filter(d=>d.tat==='Within TAT').length;
+    const tatRate=closedRecs.length>0?Math.round(withinTAT/closedRecs.length*100):0;
+    const pendRecs=sM?recs.filter(d=>m2n(d.lmy)<=mn&&(!d.cmy||m2n(d.cmy)>mn)):recs.filter(d=>!d.cmy);
+    const avgAging=pendRecs.length>0?+(pendRecs.reduce((s,d)=>s+d.aging,0)/pendRecs.length).toFixed(1):0;
+    const gt30=pendRecs.filter(d=>d.aging>=31).length;
+    const gt30Rate=pendRecs.length>0?Math.round(gt30/pendRecs.length*100):0;
+    return{pn,lg,cl,pe,tatRate,avgAging,gt30,gt30Rate};
+  }).sort((a,b)=>b.lg-a.lg);
+
+  // Period label
+  document.getElementById('ls-period').textContent='📅 Showing: '+(sM||'All Months');
+
+  // KPI cards
+  const[lgAll,clAll,peAll]=calc(lsRecs,sM);
+  document.getElementById('ls-stats').innerHTML=[
+    {lbl:'Logged',val:lgAll,c:'#1a6cc4',icon:'📋',sub:'Total cases logged'},
+    {lbl:'Closed',val:clAll,c:'#16a34a',icon:'✅',sub:'Cases resolved'},
+    {lbl:'Pending',val:peAll,c:'#d97706',icon:'⏳',sub:'Still open'},
+    {lbl:'Products',val:rows.length,c:'#7c3aed',icon:'📦',sub:'Distinct product types'},
+  ].map(s=>'<div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px 16px;box-shadow:var(--shadow)">'
+    +'<div style="font-size:16px;margin-bottom:6px">'+s.icon+'</div>'
+    +'<div style="font-size:26px;font-weight:800;color:'+s.c+';line-height:1">'+s.val+'</div>'
+    +'<div style="font-size:11px;font-weight:700;color:#0d2b4e;margin-top:4px">'+s.lbl+'</div>'
+    +'<div style="font-size:9px;color:#4a7aaa;margin-top:2px">'+s.sub+'</div>'
+    +'</div>').join('');
+
+  // Detail table with expandable store sub-rows
+  const tbl=document.getElementById('ls-tbl');
+  const COLS=['#','Product Name','Logged','Closed','Pending','Within TAT %','Avg Aging','>30d (%)'];
+  tbl.querySelector('thead').innerHTML='<tr>'+COLS.map((c,i)=>'<th style="text-align:'+(i<=1?'left':'right')+'">'+c+'</th>').join('')+'</tr>';
+
+  const safeKey=k=>k.replace(/[^a-z0-9]/gi,'_');
+
+  tbl.querySelector('tbody').innerHTML=rows.map((r,i)=>{
+    const sk=safeKey(r.pn);
+
+    // Store breakdown for this product
+    const pnRecs=lsRecs.filter(d=>d.pn===r.pn);
+    const stGroups={};
+    pnRecs.forEach(d=>{if(!d.store)return;if(!stGroups[d.store])stGroups[d.store]=[];stGroups[d.store].push(d);});
+    const stRows=Object.entries(stGroups).map(([store,srecs])=>{
+      const[slg,scl,spe]=calc(srecs,sM);
+      const sClosedRecs=sM?srecs.filter(d=>d.cmy===sM&&d.fs==='Closed'):srecs.filter(d=>d.fs==='Closed');
+      const sTatRate=sClosedRecs.length>0?Math.round(sClosedRecs.filter(d=>d.tat==='Within TAT').length/sClosedRecs.length*100):0;
+      const sPendRecs=sM?srecs.filter(d=>m2n(d.lmy)<=mn&&(!d.cmy||m2n(d.cmy)>mn)):srecs.filter(d=>!d.cmy);
+      const sAvgAging=sPendRecs.length>0?+(sPendRecs.reduce((s,d)=>s+d.aging,0)/sPendRecs.length).toFixed(1):0;
+      const sGt30=sPendRecs.filter(d=>d.aging>=31).length;
+      const sGt30Rate=sPendRecs.length>0?Math.round(sGt30/sPendRecs.length*100):0;
+      const zone=srecs[0]?.zone||'—';
+      return{store,zone,slg,scl,spe,sTatRate,sAvgAging,sGt30,sGt30Rate};
+    }).filter(s=>s.slg>0).sort((a,b)=>b.slg-a.slg);
+
+    const subHdr='<tr style="background:rgba(26,108,196,0.05);border-top:1.5px solid rgba(26,108,196,0.12)">'
+      +'<td></td>'
+      +'<td style="font-size:9px;font-weight:700;color:#4a7aaa;padding-left:22px;text-transform:uppercase;letter-spacing:0.5px">Store</td>'
+      +'<td style="font-size:9px;font-weight:700;color:#4a7aaa;text-align:right;text-transform:uppercase">Zone</td>'
+      +'<td style="font-size:9px;font-weight:700;color:#4a7aaa;text-align:right;text-transform:uppercase">Logged</td>'
+      +'<td style="font-size:9px;font-weight:700;color:#4a7aaa;text-align:right;text-transform:uppercase">Closed</td>'
+      +'<td style="font-size:9px;font-weight:700;color:#4a7aaa;text-align:right;text-transform:uppercase">Pending</td>'
+      +'<td style="font-size:9px;font-weight:700;color:#4a7aaa;text-align:right;text-transform:uppercase">Within TAT</td>'
+      +'<td style="font-size:9px;font-weight:700;color:#4a7aaa;text-align:right;text-transform:uppercase">Avg Aging</td>'
+      +'<td style="font-size:9px;font-weight:700;color:#4a7aaa;text-align:right;text-transform:uppercase">>30d</td>'
+      +'</tr>';
+
+    const stHtml=stRows.map((s,si)=>'<tr style="background:'+(si%2===0?'rgba(26,108,196,0.025)':'rgba(26,108,196,0.01)')+'">'
+      +'<td></td>'
+      +'<td style="padding-left:22px;font-size:10.5px;color:#1a3a5c;white-space:nowrap">🏪 '+s.store+'</td>'
+      +'<td style="text-align:right;font-size:10.5px;color:#4a7aaa">'+s.zone+'</td>'
+      +'<td style="text-align:right;font-size:10.5px;font-weight:600;color:#1a6cc4">'+s.slg+'</td>'
+      +'<td style="text-align:right;font-size:10.5px;font-weight:600;color:#16a34a">'+s.scl+'</td>'
+      +'<td style="text-align:right;font-size:10.5px;font-weight:600;color:#d97706">'+s.spe+'</td>'
+      +'<td style="text-align:right;font-size:10.5px"><span class="eff-pct '+pctClass(s.sTatRate)+'">'+s.sTatRate+'%</span></td>'
+      +'<td style="text-align:right;font-size:10.5px;color:'+(s.sAvgAging>20?'#e11d48':s.sAvgAging>10?'#d97706':'#16a34a')+'">'+s.sAvgAging+'d</td>'
+      +'<td style="text-align:right;font-size:10.5px;color:'+(s.sGt30Rate>40?'#e11d48':s.sGt30Rate>20?'#d97706':'#16a34a')+'">'+s.sGt30+' <span style="font-size:9px;opacity:.7">('+s.sGt30Rate+'%)</span></td>'
+      +'</tr>').join('');
+
+    const mainRow='<tr style="border-bottom:1px solid rgba(26,108,196,0.06)">'
+      +'<td style="text-align:center;font-size:12px;width:36px">'+medal(i)+'</td>'
+      +'<td style="font-weight:700;color:#0d2b4e;cursor:pointer;white-space:nowrap" onclick="toggleLSProduct(\''+sk+'\')">'
+        +'<span id="ls-arr-'+sk+'" style="display:inline-block;width:14px;font-size:10px;color:#4a7aaa">▸</span>'+r.pn+'</td>'
+      +'<td style="text-align:right;font-weight:600;color:#1a6cc4">'+r.lg+'</td>'
+      +'<td style="text-align:right;font-weight:600;color:#16a34a">'+r.cl+'</td>'
+      +'<td style="text-align:right;font-weight:600;color:#d97706">'+r.pe+'</td>'
+      +'<td style="text-align:right"><span class="eff-pct '+pctClass(r.tatRate)+'">'+r.tatRate+'%</span></td>'
+      +'<td style="text-align:right;color:'+(r.avgAging>20?'#e11d48':r.avgAging>10?'#d97706':'#16a34a')+'">'+r.avgAging+'d</td>'
+      +'<td style="text-align:right;color:'+(r.gt30Rate>40?'#e11d48':r.gt30Rate>20?'#d97706':'#16a34a')+'">'+r.gt30+' <span style="font-size:9px;opacity:.7">('+r.gt30Rate+'%)</span></td>'
+      +'</tr>';
+
+    const subRow='<tr id="ls-sub-'+sk+'" style="display:none"><td colspan="8" style="padding:0;border-bottom:2px solid rgba(26,108,196,0.1)">'
+      +'<table style="width:100%;border-collapse:collapse">'+subHdr+stHtml+'</table>'
+      +'</td></tr>';
+
+    return mainRow+subRow;
+  }).join('');
+}
+
+function toggleLSProduct(key){
+  const sub=document.getElementById('ls-sub-'+key);
+  const arrow=document.getElementById('ls-arr-'+key);
+  if(!sub)return;
+  const open=sub.style.display==='none'||sub.style.display==='';
+  sub.style.display=open?'table-row':'none';
+  if(arrow)arrow.textContent=open?'▾':'▸';
 }
 
 // START
