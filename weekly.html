@@ -200,7 +200,7 @@ function transformRow(row){
     vendor:String(row['Product Vendor']||'').trim(),
     store:String(row['Store Name']||'').trim(),
     cp:CRITICAL_PRODUCTS.has(pn.toLowerCase())?'Critical Product':'Others',
-    pt:String(row['Product Type']||'').trim()||'Unknown',
+    pt:String(row['New Product Type']||'').trim()||'Unknown',
     pn,_raw:row
   };
 }
